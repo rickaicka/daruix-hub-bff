@@ -1,0 +1,495 @@
+{
+  "user_type": {
+    "slug": "employee",
+    "name": "Colaborador"
+  },
+  "groups": [
+    {
+      "slug": "administrador",
+      "name": "Administrador",
+      "legacy_name": "Administrador"
+    },
+    {
+      "slug": "arquitetura",
+      "name": "Arquitetura",
+      "legacy_name": "Arquitetura"
+    },
+    {
+      "slug": "diretoria",
+      "name": "Diretoria",
+      "legacy_name": "Diretoria"
+    },
+    {
+      "slug": "obras",
+      "name": "obras",
+      "legacy_name": "obras"
+    },
+    {
+      "slug": "planejamento",
+      "name": "Planejamento",
+      "legacy_name": "Planejamento"
+    },
+    {
+      "slug": "rh",
+      "name": "RH",
+      "legacy_name": "RH"
+    },
+    {
+      "slug": "suprimentos",
+      "name": "suprimentos",
+      "legacy_name": "suprimentos"
+    }
+  ],
+  "modules": [
+    {
+      "source_table": "Menu2",
+      "slug": "cadastro_de_propostas",
+      "name": "Cadastro de Propostas",
+      "legacy_name": "Cadastro de Propostas"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "cadastro_de_fornecedores",
+      "name": "Cadastro de Fornecedores",
+      "legacy_name": "Cadastro de Fornecedores"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "clientes",
+      "name": "clientes",
+      "legacy_name": "clientes"
+    },
+    {
+      "source_table": "MENU OBRAS",
+      "slug": "os",
+      "name": "OS",
+      "legacy_name": "OS"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "func",
+      "name": "func",
+      "legacy_name": "func"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "propantiga",
+      "name": "propantiga",
+      "legacy_name": "propantiga"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "contap",
+      "name": "contaP",
+      "legacy_name": "contaP"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "contar",
+      "name": "contaR",
+      "legacy_name": "contaR"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "prevcr",
+      "name": "prevCR",
+      "legacy_name": "prevCR"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "qa",
+      "name": "QA",
+      "legacy_name": "QA"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "rel",
+      "name": "Rel",
+      "legacy_name": "Rel"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "tabela",
+      "name": "Tabela",
+      "legacy_name": "Tabela"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "memorando",
+      "name": "memorando",
+      "legacy_name": "memorando"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "sair",
+      "name": "sair",
+      "legacy_name": "sair"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "informe_de_cobranca",
+      "name": "Informe de Cobrança",
+      "legacy_name": "Informe de Cobrança"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "at_planej",
+      "name": "At Planej",
+      "legacy_name": "At Planej"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "relatorios",
+      "name": "RELatórios",
+      "legacy_name": "RELatórios"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "solicitacao_de_plotagem",
+      "name": "Solicitação de Plotagem",
+      "legacy_name": "Solicitação de Plotagem"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "plotagens",
+      "name": "Plotagens",
+      "legacy_name": "Plotagens"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "conta_corrente",
+      "name": "conta corrente",
+      "legacy_name": "conta corrente"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "arquivo_morto",
+      "name": "Arquivo Morto",
+      "legacy_name": "Arquivo Morto"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "solemail",
+      "name": "solemail",
+      "legacy_name": "solemail"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "acompemail",
+      "name": "acompemail",
+      "legacy_name": "acompemail"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "bkp",
+      "name": "bkp",
+      "legacy_name": "bkp"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "followup",
+      "name": "followup",
+      "legacy_name": "followup"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "solicitacao_de_pagamentos",
+      "name": "Solicitação de Pagamentos",
+      "legacy_name": "Solicitação de Pagamentos"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "centro_de_custos",
+      "name": "Centro de Custos",
+      "legacy_name": "Centro de Custos"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "saldos",
+      "name": "Saldos",
+      "legacy_name": "Saldos"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "osobras",
+      "name": "OSOBRAS",
+      "legacy_name": "OSOBRAS"
+    },
+    {
+      "source_table": "MENU OBRAS",
+      "slug": "cotacao",
+      "name": "COTAÇÃO",
+      "legacy_name": "COTAÇÃO"
+    },
+    {
+      "source_table": "MENU OBRAS",
+      "slug": "insumos",
+      "name": "INSUMOS",
+      "legacy_name": "INSUMOS"
+    },
+    {
+      "source_table": "MENU OBRAS",
+      "slug": "orcamentos",
+      "name": "ORÇAMENTOS",
+      "legacy_name": "ORÇAMENTOS"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "req",
+      "name": "req",
+      "legacy_name": "req"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "tcpo",
+      "name": "TCPO",
+      "legacy_name": "TCPO"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "autpag",
+      "name": "autpag",
+      "legacy_name": "autpag"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "emch",
+      "name": "emch",
+      "legacy_name": "emch"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "c_pagas",
+      "name": "c_pagas",
+      "legacy_name": "c_pagas"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "extrato",
+      "name": "extrato",
+      "legacy_name": "extrato"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "pag",
+      "name": "pag",
+      "legacy_name": "pag"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "pesquisa",
+      "name": "pesquisa",
+      "legacy_name": "pesquisa"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "teste",
+      "name": "teste",
+      "legacy_name": "teste"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "cadobra",
+      "name": "cadobra",
+      "legacy_name": "cadobra"
+    },
+    {
+      "source_table": "Menu2",
+      "slug": "caddupl",
+      "name": "caddupl",
+      "legacy_name": "caddupl"
+    }
+  ],
+  "users": [
+    {
+      "usuNome": "beatriz.fachin",
+      "usuGrupo": "Obras",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "BEATRIZ MOURA FACHIN",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "cintia",
+      "usuGrupo": "Diretoria",
+      "usuAlcada": 999999999,
+      "usuNomeCompleto": "Cintia Gabriel Daruix",
+      "usuPainel": "sim",
+      "usuDedutiveis": "sim",
+      "usuLogado": 1,
+      "usuLogadoEm": "2025-01-08T18:46:36"
+    },
+    {
+      "usuNome": "daniela.daruix",
+      "usuGrupo": "Administrador",
+      "usuAlcada": 100000,
+      "usuNomeCompleto": "Daniela Silva Daruix",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": 1,
+      "usuLogadoEm": "2026-05-11T08:39:52"
+    },
+    {
+      "usuNome": "ejamorim",
+      "usuGrupo": "Planejamento",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "Edivando Jivando de Amorim",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": 1,
+      "usuLogadoEm": "2024-10-07T08:32:07"
+    },
+    {
+      "usuNome": "enrique",
+      "usuGrupo": null,
+      "usuAlcada": 0,
+      "usuNomeCompleto": "ENRIQUE SILVA ROJAS",
+      "usuPainel": null,
+      "usuDedutiveis": null,
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "guilherme",
+      "usuGrupo": "Obras",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "Guilherme José Ramadan Alduino",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "joice",
+      "usuGrupo": "Arquitetura",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "Joice Dolores de Mello",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "Lucas",
+      "usuGrupo": "Arquitetura",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "LUCAS BRAGA DARUIX",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "mpimentel",
+      "usuGrupo": null,
+      "usuAlcada": 0,
+      "usuNomeCompleto": "MARCELO CANDIDO PIMENTEL",
+      "usuPainel": null,
+      "usuDedutiveis": null,
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "mreale",
+      "usuGrupo": null,
+      "usuAlcada": 0,
+      "usuNomeCompleto": "MÔNICA REALE",
+      "usuPainel": null,
+      "usuDedutiveis": null,
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "pamela",
+      "usuGrupo": "obras",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "PAMELA ALVES VIEIRA",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": 1,
+      "usuLogadoEm": "2026-01-09T08:46:55"
+    },
+    {
+      "usuNome": "Pamela.vieira",
+      "usuGrupo": "obras",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "PAMELA ALVES VIEIRA",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": 1,
+      "usuLogadoEm": "2026-01-09T08:46:55"
+    },
+    {
+      "usuNome": "rafael",
+      "usuGrupo": "Obras",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "Rafael Salim Daruix",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "reinaldo",
+      "usuGrupo": "Diretoria",
+      "usuAlcada": 999999999,
+      "usuNomeCompleto": "Reinaldo Salim Daruix",
+      "usuPainel": "sim",
+      "usuDedutiveis": "sim",
+      "usuLogado": 1,
+      "usuLogadoEm": "2024-10-18T14:23:59"
+    },
+    {
+      "usuNome": "renato",
+      "usuGrupo": "Administrador",
+      "usuAlcada": 200000000,
+      "usuNomeCompleto": "Renato Salim Daruix",
+      "usuPainel": "sim",
+      "usuDedutiveis": "sim",
+      "usuLogado": 1,
+      "usuLogadoEm": "2026-06-16T14:59:40"
+    },
+    {
+      "usuNome": "ricardo",
+      "usuGrupo": "obras",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "RICARDO SALIM DARUIX",
+      "usuPainel": null,
+      "usuDedutiveis": null,
+      "usuLogado": null,
+      "usuLogadoEm": null
+    },
+    {
+      "usuNome": "roberval",
+      "usuGrupo": "Diretoria",
+      "usuAlcada": 999999999,
+      "usuNomeCompleto": "Roberval Salim Daruix",
+      "usuPainel": "sim",
+      "usuDedutiveis": "sim",
+      "usuLogado": 1,
+      "usuLogadoEm": "2026-01-28T18:05:27"
+    },
+    {
+      "usuNome": "tais.santos",
+      "usuGrupo": "suprimentos",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "Tais Santos Francisco",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": 1,
+      "usuLogadoEm": "2026-06-08T11:42:33"
+    },
+    {
+      "usuNome": "veronica",
+      "usuGrupo": "RH",
+      "usuAlcada": 0,
+      "usuNomeCompleto": "Veronica Nabarro Perez",
+      "usuPainel": "não",
+      "usuDedutiveis": "não",
+      "usuLogado": 1,
+      "usuLogadoEm": "2024-03-18T13:52:55"
+    }
+  ]
+}
