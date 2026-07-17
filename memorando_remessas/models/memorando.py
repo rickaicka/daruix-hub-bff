@@ -17,13 +17,15 @@ class ShipmentMemo(models.Model):
 
     code = models.CharField(
         max_length=30,
-        unique=True,
         null=True,
         blank=True,
         editable=False,
         db_column="codigo",
         verbose_name="Código",
-        help_text="Código gerado pelo sistema. Exemplo: MRO00001-01.",
+        help_text=(
+            "Código gerado pelo sistema. "
+            "Exemplo: MR21065-001."
+        ),
     )
 
     sequence_number = models.PositiveBigIntegerField(
@@ -280,6 +282,10 @@ class ShipmentMemo(models.Model):
                 fields=["shipping_date"],
                 name="memo_shipping_date_idx",
             ),
+            models.Index(
+                fields=["code"],
+                name="memo_code_idx",
+            ),
         ]
         constraints = [
             models.CheckConstraint(
@@ -288,21 +294,25 @@ class ShipmentMemo(models.Model):
             ),
             models.UniqueConstraint(
                 fields=[
-                    "sequence_number",
+                    "code",
                     "revision",
                 ],
                 condition=models.Q(
-                    sequence_number__isnull=False,
+                    code__isnull=False,
                 ),
-                name="uq_memo_sequencia_revisao",
+                name="uq_memo_codigo_revisao",
             ),
         ]
 
     def __str__(self):
-        identification = (
-            self.code
-            or f"Memorando #{self.pk or 'novo'}"
-        )
+        if self.code:
+            identification = (
+                f"{self.code} - Rev. {self.revision}"
+            )
+        else:
+            identification = (
+                f"Memorando #{self.pk or 'novo'}"
+            )
 
         if self.work_name:
             return f"{identification} - {self.work_name}"

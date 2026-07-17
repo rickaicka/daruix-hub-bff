@@ -20,6 +20,8 @@ from memorando_remessas.permissions import (
     SHIPMENT_MEMO_BE_RESPONSIBLE_PERMISSION,
 )
 from memorando_remessas.services.codigo_service import (
+    ShipmentMemoCodeError,
+    extract_pc_number,
     generate_shipment_memo_code,
 )
 from memorando_remessas.services.historico_service import (
@@ -407,9 +409,19 @@ def create_shipment_memo(
         option_ids=option_ids,
     )
 
-    sequence_number, code = (
-        generate_shipment_memo_code()
-    )
+    try:
+        sequence_number, code = (
+            generate_shipment_memo_code(
+                cost_center=work.get(
+                    "cost_center",
+                    "",
+                ),
+            )
+        )
+    except ShipmentMemoCodeError as error:
+        raise serializers.ValidationError({
+            "legacy_work_id": str(error),
+        }) from error
 
     shipment_memo = ShipmentMemo(
         code=code,
@@ -515,6 +527,33 @@ def update_shipment_memo(
         work = _get_legacy_work_or_error(
             legacy_work_id=legacy_work_id,
         )
+
+        try:
+            current_pc_number = extract_pc_number(
+                shipment_memo.cost_center
+            )
+            selected_pc_number = extract_pc_number(
+                work.get(
+                    "cost_center",
+                    "",
+                )
+            )
+        except ShipmentMemoCodeError as error:
+            raise serializers.ValidationError({
+                "legacy_work_id": str(error),
+            }) from error
+
+        if current_pc_number != selected_pc_number:
+            raise serializers.ValidationError({
+                "legacy_work_id": (
+                    "Não é possível alterar este memorando "
+                    "para uma obra de outro PC. O código "
+                    f"{shipment_memo.code} pertence ao PC "
+                    f"{current_pc_number}. Para o PC "
+                    f"{selected_pc_number}, crie um novo "
+                    "memorando de remessa."
+                )
+            })
 
         _apply_legacy_snapshot(
             shipment_memo=shipment_memo,
@@ -868,7 +907,7 @@ def create_shipment_memo_revision(
         ShipmentMemo.objects
         .select_for_update()
         .filter(
-            sequence_number=source.sequence_number,
+            code=source.code,
         )
     )
 
@@ -889,10 +928,7 @@ def create_shipment_memo_revision(
 
     next_revision = latest_revision + 1
 
-    code = (
-        f"MRO{source.sequence_number:05d}"
-        f"-{next_revision:02d}"
-    )
+    code = source.code
 
     new_memo = ShipmentMemo.objects.create(
         code=code,
@@ -999,11 +1035,14 @@ def create_shipment_memo_revision(
         action=ShipmentMemoHistoryAction.REVISION_CREATED,
         actor=user,
         description=(
-            f"Nova revisão criada: {new_memo.code}."
+            "Nova revisão criada: "
+            f"{new_memo.code} - Rev. "
+            f"{new_memo.revision}."
         ),
         metadata={
             "new_revision_id": new_memo.id,
             "new_revision_code": new_memo.code,
+            "new_revision_number": new_memo.revision,
         },
     )
 
@@ -1012,7 +1051,9 @@ def create_shipment_memo_revision(
         action=ShipmentMemoHistoryAction.REVISION_CREATED,
         actor=user,
         description=(
-            f"Revisão criada a partir de {source.code}."
+            f"Rev. {new_memo.revision} criada a partir "
+            f"de {source.code} - Rev. "
+            f"{source.revision}."
         ),
         after_data=serialize_shipment_memo_state(
             new_memo
@@ -1020,6 +1061,7 @@ def create_shipment_memo_revision(
         metadata={
             "source_id": source.id,
             "source_code": source.code,
+            "source_revision": source.revision,
         },
     )
 
