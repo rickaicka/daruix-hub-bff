@@ -1,0 +1,37 @@
+from drf_spectacular.utils import extend_schema
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+
+class MemorandoRemessasHealthView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    @extend_schema(
+        tags=["memorando-remessas"],
+        summary="Verificar módulo de memorandos de remessa",
+        description=(
+            "Valida se o módulo de Memorandos de Remessa "
+            "está registrado e acessível."
+        ),
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "module": {
+                        "type": "string",
+                    },
+                    "status": {
+                        "type": "string",
+                    },
+                },
+            },
+        },
+    )
+    def get(self, request):
+        return Response({
+            "module": "memorando_remessas",
+            "status": "ok",
+        })

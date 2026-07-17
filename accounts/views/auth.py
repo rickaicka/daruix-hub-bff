@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, get_user_model
+﻿from django.contrib.auth import authenticate, get_user_model
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -18,9 +18,18 @@ from accounts.serializers.auth import (
     LogoutResponseSerializer,
     LogoutSerializer,
     MeResponseSerializer,
+    RefreshResponseSerializer,
+    RefreshSerializer,
 )
 from accounts.services.auth_payload_service import build_authenticated_user_payload
 from accounts.services.legacy_import_service import LegacyImportService
+from accounts.models import UserSession
+from accounts.services.session_service import (
+    build_access_from_refresh_token,
+    build_tokens_for_session,
+    close_user_session,
+    create_user_session,
+)
 
 User = get_user_model()
 
@@ -37,7 +46,7 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["auth"],
         summary="Login",
         description=(
             "Authenticates a SGOWEB user by username and password. "
@@ -119,13 +128,12 @@ class LoginView(APIView):
 
         user_payload = build_login_user_payload(user)
 
-        refresh = RefreshToken.for_user(user)
+        session = create_user_session(user)
+        tokens = build_tokens_for_session(user, session)
 
         return Response(
             {
-                "access_token": str(refresh.access_token),
-                "refresh_token": str(refresh),
-                "token_type": "bearer",
+                **tokens,
                 "usuario": user_payload,
             },
             status=status.HTTP_200_OK,
@@ -152,12 +160,12 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        tags=["Auth"],
-        summary="Usuário autenticado",
-        description="Retorna os dados completos do usuário autenticado, incluindo grupo e permissões quando existirem.",
+        tags=["auth"],
+        summary="UsuÃ¡rio autenticado",
+        description="Retorna os dados completos do usuÃ¡rio autenticado, incluindo grupo e permissÃµes quando existirem.",
         responses={
             200: MeResponseSerializer,
-            401: OpenApiResponse(description="Credenciais de autenticação não foram informadas."),
+            401: OpenApiResponse(description="Credenciais de autenticaÃ§Ã£o nÃ£o foram informadas."),
         },
     )
     def get(self, request):
@@ -171,7 +179,7 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["auth"],
         summary="Logout",
         description="Blacklists the provided refresh token.",
         request=LogoutSerializer,
@@ -202,17 +210,66 @@ class LogoutView(APIView):
 
         refresh_token = serializer.validated_data["refresh_token"]
 
+        session_id = None
+
+        if request.auth:
+            session_id = request.auth.get("sid")
+
         try:
             token = RefreshToken(refresh_token)
+
+            if not session_id:
+                session_id = token.get("sid")
+
             token.blacklist()
 
+        except TokenError:
+            if session_id:
+                close_user_session(
+                    user=request.user,
+                    session_id=session_id,
+                    reason=UserSession.EndReason.LOGOUT,
+                )
+
             return Response(
-                {"detail": "Logout completed successfully."},
+                {
+                    "detail": "SessÃ£o encerrada, mas o refresh token jÃ¡ estava invÃ¡lido ou expirado."
+                },
                 status=status.HTTP_200_OK,
             )
 
-        except TokenError:
-            return Response(
-                {"detail": "Invalid or expired refresh token."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        close_user_session(
+            user=request.user,
+            session_id=session_id,
+            reason=UserSession.EndReason.LOGOUT,
+        )
+
+        return Response(
+            {"detail": "Logout completed successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+class RefreshView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["auth"],
+        summary="Refresh token",
+        description="Gera um novo access token validando a sessÃ£o ativa do usuÃ¡rio.",
+        request=RefreshSerializer,
+        responses={
+            200: RefreshResponseSerializer,
+            401: OpenApiResponse(description="Refresh token invÃ¡lido, expirado ou sessÃ£o encerrada."),
+        },
+    )
+    def post(self, request):
+        serializer = RefreshSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        refresh_token = serializer.validated_data["refresh_token"]
+
+        return Response(
+            build_access_from_refresh_token(refresh_token),
+            status=status.HTTP_200_OK,
+        )
+

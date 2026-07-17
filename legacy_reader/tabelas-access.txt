@@ -1,0 +1,224 @@
+﻿Tabelas encontradas:
+--------------------------------------------------------------------------------
+aditivoCentroDeCusto
+agenda
+AnexoDeOC
+Arquivo Morto
+arquivoMortoCaixa
+bkp solicitaþÒo
+Cadastro  Fornecedores
+Cadastro  Fornecedores(19-08-2024)
+Cadastro  Fornecedores2
+Cadastro de Cliente
+Cadastro de Cliente1
+Cadastro de Cliente2
+Cadastro de Componentes
+Cadastro de Insumos/Serviþos
+Cadastro de Proposta
+Cadastro Funcionario
+Cadastro Obra
+Cadastro Obra-Projeto
+CadastroProjeto
+Concreto
+contratoLocacao
+contratoLocacao1
+Controle
+Controle1
+controleID
+controleLocacao
+C¾pia de tblComposicaoDeServico
+Dedutiveis
+Departamento
+Emissao
+EnderecoEntregaOpcional
+EnderecoEntregaOpcional1
+Erros ao colar
+Favorecido
+fornecedorMapaDeCotacaoDeServicos
+Gerenciador de Contatos
+INSUMOS
+InsumosRM
+ItemDaComposicaoDeServico
+itemPrevisto
+ItensDaRequisicao
+LancamentosDedutiveis
+MapaDeCotacaoDeServicos
+Memorando de remessa
+Menu
+MENU OBRAS
+Menu2
+Nova Rel
+Ordem de Servico
+OrdemDeCompraHistorico
+pecasLocadas
+PlanilhaDeOrþamento
+plano_pagamento
+Projeto
+Proposta Antiga
+Quadro de ┴reas2
+Ramo Empresarial
+Ramo Empresarial Clientes
+rel
+RelatorioCurvaABC
+RELATËRIOS
+RequisiþÒo de Mat
+RequisiþÒo de Mat-Backup
+RequisicaoDeMateriais
+RequisicaoDeServicos
+solicitacao de email
+SupressaoDeServicosObra
+T_Acesso
+T_Acomp Pedido
+T_Aditivo Contrato
+T_Aditivo Obra
+T_Agenda Obra
+T_Cadastro Contrato
+T_Cadastro de Banco
+T_CADASTRO MDO
+T_CadProd
+T_GRNF
+T_Grupo Insumos
+T_Lancamento de Estoque
+T_LANÃAMENTOS-20-05-2024
+T_LocaþÒo Andaime
+T_Nota Fiscal
+T_Orþamento Global
+T_Parcelamento OP
+T_Produtos de Obra
+T_Subcontratado
+T_Subcontrato
+T_Usuario
+Tabela Cobranþa Projetos
+Tabela1
+Tabela2
+tblAcompanhamentoDaEntrega
+tblAditivoPlanilhaDeOrcamento
+tblAlteracoesOC
+tblAmbiente
+tblAvaliacaoDeFornecedor
+tblBairro
+tblBairroXCidade
+tblBoletos
+tblCadastroCNO
+tblCadastroDeCliente
+tblCadastroDeContas
+tblCadastrodeContato
+tblCadastroDeEPI
+tblCadastroDeFormato
+tblCadastroDeRadio
+tblCadastroDeServicos
+tblCadastroDeVeiculo
+tblCaixaDeArquivo
+tblCentroDeCustoAdm
+tblCentroDeCustoObra
+tblChavePix
+tblCidades
+tblComposicaoDeServico
+tblComposicaoDoCentroDeCusto
+tblCondicaoPagamento
+tblContatoBanco
+tblContatoCliente
+tblContatoFornecedor
+tblContatoProposta
+tblContratosDRSBRAZIL
+tblControleDeEPI
+tblControleDeFaltas
+tblControleDeFeriado
+tblControleDosRadios
+tblControleFinanceiro
+tblControleRevisaoContasAPagar
+tblConversaoDeValor
+tblDadosART
+tblDiaUtil
+tblEnderecoDeEntregaDaPlotagem
+tblEnderecoEntregaOpcional
+tblEspeciesTitulo
+tblEstado
+tblEtapaDaObra
+tblEtapaDoProjeto
+tblFaturamentoOpcional
+tblFeriado
+tblFinalidadeDaPlotagem
+tblFornecedorCondicaoPagamento
+tblFornecedorDaCotacao
+tblGrupoDeMaterial
+tblGrupoOC
+tblHistoricoDoItemDaGRNF
+tblHistoricoFaturamentoDaObra
+tblInformeDeCobranca
+tblInquilinos
+tblInsumos
+tblItemComposicaoDeServico(TCPO)
+tblitemDaCaixaDeArquivo
+tblItemDaComposicaoDeEtapa
+tblItemDaComposicaoDeServico
+tblItemDaComposicaoDoCentroDeCusto
+tblItemDaComposicaoDoCentroDeCusto(Insumos)
+tblitemDaEtapaDaObra
+tblitemDaPlanilhaDaCotacao
+tblitemDaPlanilhaDeOrcamento
+tblItemDaRelacaoDeDocumento
+tblItemDaSolicitacaoDeManutencao
+tblItemDaSolicitacaoDePlotagem
+tblItemDoAcompanhamentoDaEntrega
+tblItemDoCentroDeCusto
+tblItemMemorandoDeRemessa
+tblItensBoleto
+tblJuncaoFornecedorFavorecido
+tblJuncaoInsumoEServico
+tblLancamentoFuturo
+tblLocacaoComposicao
+tblLocacaoControle
+tblLocacaoMov
+tblLogErros
+tblMemorandoDeRemessaObra
+tblNotasFiscais
+tblNumeroDoFornecedorDaCotacao
+tblObjeto
+tblOCVencimentos
+tblOrdemDeCompra
+tblPadraoDeImpressao
+tblPagador
+tblPagamentoDeSalario
+tblPagamentoOpcional
+tblPagamentoParceladoProjetos
+tblParaConferencia
+tblParaConferencia2
+tblParamBase
+tblParamBoletos
+tblParcelaNotasFiscais
+tblPeriodoDoValeTransporte
+tblPlanilhaDeCotacao
+tblPlanilhaDeOrcamento
+tblPlanilhaDeOrcamentoRevisao
+tblPrecoDaPlotagem
+tblPrecoDoValeTransporte
+tblPrecoPorFornecedorDaCotacao
+tblProjetoProposta
+tblProjetosAprovados
+tblRastreamentoDeComputador
+tblRelacaoDeDocumento
+tblRelacaoEtapaEProjeto
+tblRelacaoOrdemDeCompraEOrdemDePagamento
+tblSenhorios
+tblServico
+tblSolicitacaoDeManutencaoVeicular
+tblSolicitacaoDePagamentoOC
+tblSolicitacaoDePlotagem
+tblSubItemDaCaixaDeArquivo
+tblSubitemDaPlanilhaDeOrcamento
+tblSupressaoContratoMDO
+tblTesteComposicaoDeServico
+tbltesteDeInsumo
+tblTesteDeItemDaComposicaoDeServico
+tblTipoDeObjeto
+tblTipoDePasta
+tblTipoDeProposta
+tblUnidadeDeMedida
+tblUnidadeFederal
+tblValeTransporte
+TCPO
+Tipo_Obra
+Totais
+TS1_INSU
+UnidadesDeMedidas

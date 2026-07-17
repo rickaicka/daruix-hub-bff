@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "django_filters",
 
     "accounts",
+    "memorando_remessas.apps.MemorandoRemessasConfig",
 ]
 
 
@@ -46,7 +47,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "accounts.authentication.SessionJWTAuthentication",
     ],
 
     "DEFAULT_PERMISSION_CLASSES": [
@@ -56,9 +57,19 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=12),
+
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
 }
+
+SESSION_IDLE_TIMEOUT_MINUTES = config(
+    "SESSION_IDLE_TIMEOUT_MINUTES",
+    default=30,
+    cast=int,
+)
 
 
 SPECTACULAR_SETTINGS = {
@@ -160,3 +171,46 @@ LEGACY_AUTH_BRIDGE_PATH = config(
     "LEGACY_AUTH_BRIDGE_PATH",
     default=str(BASE_DIR / "legacy_reader" / "auth_bridge.py"),
 )
+
+LEGACY_MEMORANDO_REMESSAS_BRIDGE_PATH = config(
+    "LEGACY_MEMORANDO_REMESSAS_BRIDGE_PATH",
+    default=str(
+        BASE_DIR
+        / "legacy_reader"
+        / "memorando_remessas_bridge.py"
+    ),
+)
+
+LEGACY_BRIDGE_TIMEOUT_SECONDS = config(
+    "LEGACY_BRIDGE_TIMEOUT_SECONDS",
+    default=30,
+    cast=int,
+)
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+
+SHIPMENT_MEMO_MAX_FILE_SIZE_MB = config(
+    "SHIPMENT_MEMO_MAX_FILE_SIZE_MB",
+    default=20,
+    cast=int,
+)
+
+SHIPMENT_MEMO_MAX_FILES_PER_MEMO = config(
+    "SHIPMENT_MEMO_MAX_FILES_PER_MEMO",
+    default=20,
+    cast=int,
+)
+
+SHIPMENT_MEMO_ALLOWED_FILE_EXTENSIONS = [
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".zip",
+]

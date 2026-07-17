@@ -6,3 +6,5 @@ from accounts.models.supplier import Supplier
 from accounts.models.user import User
 from accounts.models.user_group import UserGroup
 from accounts.models.hub_module import HubModule
+from accounts.models.user_module_favorite import UserHubModuleFavorite
+from accounts.models.user_session import UserSession

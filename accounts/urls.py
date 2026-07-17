@@ -1,8 +1,8 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
 
-from accounts.views.auth import LoginView, LogoutView, MeView
+from accounts.views.auth import LoginView, LogoutView, MeView, RefreshView
+from accounts.views.hub_module_favorite import HubModuleFavoriteView
 from accounts.views.permissioning import (
     GroupPermissionViewSet,
     PermissionViewSet,
@@ -87,9 +87,13 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/me/", MeView.as_view(), name="auth-me"),
     path("auth/me/permissions/", MyPermissionsView.as_view(), name="auth-me-permissions"),
-    path("auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
+    path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
 
     path("hub-admin/opcoes/", HubAdminOptionsView.as_view(), name="hub-admin-opcoes"),
-
+    path(
+        "hub/modulos/<slug:slug>/favorito/",
+        HubModuleFavoriteView.as_view(),
+        name="hub-module-favorite",
+    ),
     path("", include(router.urls)),
 ]

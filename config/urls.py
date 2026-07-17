@@ -12,7 +12,16 @@ urlpatterns = [
 
     path("api/", include("accounts.urls")),
 
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/memorando-remessas/",
+        include("memorando_remessas.urls"),
+    ),
+
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(),
+        name="schema",
+    ),
 
     path(
         "api/docs/",

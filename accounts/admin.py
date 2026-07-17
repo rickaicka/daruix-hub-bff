@@ -8,7 +8,9 @@ from accounts.models import (
     Permission,
     Supplier,
     User,
-    UserGroup, HubModule,
+    UserGroup,
+    HubModule,
+    UserHubModuleFavorite,
 )
 
 
@@ -512,4 +514,41 @@ class HubModuleAdmin(admin.ModelAdmin):
     ordering = [
         "order",
         "name",
+    ]
+
+@admin.register(UserHubModuleFavorite)
+class UserHubModuleFavoriteAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "module",
+        "created_at",
+    ]
+
+    list_filter = [
+        "module",
+        "created_at",
+    ]
+
+    search_fields = [
+        "user__username",
+        "user__name",
+        "user__email",
+        "module__name",
+        "module__slug",
+    ]
+
+    autocomplete_fields = [
+        "user",
+        "module",
+    ]
+
+    ordering = [
+        "user__name",
+        "module__order",
+        "module__name",
+    ]
+
+    readonly_fields = [
+        "created_at",
     ]

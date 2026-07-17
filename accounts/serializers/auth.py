@@ -1,7 +1,6 @@
 from drf_spectacular.utils import OpenApiExample, extend_schema_serializer
 from rest_framework import serializers
-
-from accounts.models import HubModule
+from accounts.serializers.hub_module_serializer import HubModuleSerializer
 from accounts.services.hub_module_service import get_user_modules
 from accounts.services.permission_service import get_user_permission_codes
 
@@ -48,57 +47,6 @@ class HubModuleRemoteSerializer(serializers.Serializer):
         allow_blank=True,
         allow_null=True,
     )
-
-
-class HubModuleSerializer(serializers.ModelSerializer):
-    nome = serializers.CharField(
-        source="name",
-        read_only=True,
-    )
-
-    rota = serializers.CharField(
-        source="route",
-        read_only=True,
-    )
-
-    icone = serializers.CharField(
-        source="icon",
-        read_only=True,
-        allow_blank=True,
-    )
-
-    permissao = serializers.CharField(
-        source="permission.code",
-        read_only=True,
-    )
-
-    remote = serializers.SerializerMethodField()
-
-    class Meta:
-        model = HubModule
-        fields = [
-            "slug",
-            "nome",
-            "rota",
-            "icone",
-            "permissao",
-            "desktop_enabled",
-            "mobile_enabled",
-            "mfe_enabled",
-            "legacy_enabled",
-            "remote",
-        ]
-
-    def get_remote(self, obj):
-        if not obj.mfe_enabled:
-            return None
-
-        return {
-            "remote_name": obj.remote_name,
-            "remote_entry": obj.remote_entry,
-            "exposed_module": obj.exposed_module,
-        }
-
 
 class AuthenticatedUserSerializer(serializers.Serializer):
     id_usuario = serializers.IntegerField()
@@ -147,12 +95,31 @@ class AuthenticatedUserSerializer(serializers.Serializer):
         required=False,
     )
 
+class SessionSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    expira_em = serializers.DateTimeField()
+    inatividade_minutos = serializers.IntegerField()
+
+
+class RefreshSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField(
+        required=True,
+        help_text="Refresh token returned by login.",
+    )
+
+
+class RefreshResponseSerializer(serializers.Serializer):
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+    token_type = serializers.CharField()
+    sessao = SessionSerializer()
 
 class LoginResponseSerializer(serializers.Serializer):
     access_token = serializers.CharField()
     refresh_token = serializers.CharField()
     token_type = serializers.CharField()
     usuario = AuthenticatedUserSerializer()
+    sessao = SessionSerializer()
 
 
 class MeResponseSerializer(serializers.Serializer):
@@ -225,7 +192,12 @@ class MeResponseSerializer(serializers.Serializer):
 
     def get_modulos(self, user):
         modules = get_user_modules(user)
-        return HubModuleSerializer(modules, many=True).data
+
+        return HubModuleSerializer(
+            modules,
+            many=True,
+            context={"user": user},
+        ).data
 
 
 class LogoutSerializer(serializers.Serializer):

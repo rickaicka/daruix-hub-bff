@@ -1,0 +1,193 @@
+﻿from django.contrib.auth import get_user_model
+from django.db.models import Q
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+)
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from accounts.models.choices import UserType
+from memorando_remessas.models import (
+    ShipmentMemoOption,
+    ShipmentMemoOptionType,
+)
+from memorando_remessas.permissions import (
+    HasShipmentMemoFormAccess,
+    SHIPMENT_MEMO_BE_RESPONSIBLE_PERMISSION,
+)
+from memorando_remessas.serializers import (
+    ResponsibleUserListResponseSerializer,
+    ResponsibleUserQuerySerializer,
+    ShipmentMemoOptionSerializer,
+    ShipmentMemoOptionsResponseSerializer,
+)
+
+User = get_user_model()
+
+
+class ShipmentMemoOptionsView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+        HasShipmentMemoFormAccess,
+    ]
+
+    @extend_schema(
+        tags=["memorando-remessas/configuracoes"],
+        summary="Listar opÃ§Ãµes do memorando",
+        description=(
+            "Retorna as opÃ§Ãµes ativas de EspÃ©cie, "
+            "Finalidade e SolicitaÃ§Ã£o usadas no formulÃ¡rio."
+        ),
+        responses={
+            200: ShipmentMemoOptionsResponseSerializer,
+        },
+    )
+    def get(self, request):
+        options = (
+            ShipmentMemoOption.objects
+            .filter(is_active=True)
+            .order_by(
+                "option_type",
+                "order",
+                "name",
+            )
+        )
+
+        species = options.filter(
+            option_type=ShipmentMemoOptionType.SPECIES,
+        )
+
+        purposes = options.filter(
+            option_type=ShipmentMemoOptionType.PURPOSE,
+        )
+
+        requests = options.filter(
+            option_type=ShipmentMemoOptionType.REQUEST,
+        )
+
+        payload = {
+            "species": ShipmentMemoOptionSerializer(
+                species,
+                many=True,
+            ).data,
+            "purposes": ShipmentMemoOptionSerializer(
+                purposes,
+                many=True,
+            ).data,
+            "requests": ShipmentMemoOptionSerializer(
+                requests,
+                many=True,
+            ).data,
+        }
+
+        response_serializer = (
+            ShipmentMemoOptionsResponseSerializer(
+                payload
+            )
+        )
+
+        return Response(
+            response_serializer.data,
+        )
+
+
+class ShipmentMemoResponsibleUsersView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+        HasShipmentMemoFormAccess,
+    ]
+
+    @extend_schema(
+        tags=["memorando-remessas/configuracoes"],
+        summary="Listar responsÃ¡veis disponÃ­veis",
+        description=(
+            "Lista colaboradores ativos autorizados a serem "
+            "responsÃ¡veis por memorandos. O usuÃ¡rio logado "
+            "tambÃ©m Ã© incluÃ­do quando for colaborador ativo."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                description=(
+                    "Busca por nome, usuÃ¡rio, e-mail ou grupo."
+                ),
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="limit",
+                description=(
+                    "Quantidade mÃ¡xima de resultados."
+                ),
+                required=False,
+                type=int,
+            ),
+        ],
+        responses={
+            200: ResponsibleUserListResponseSerializer,
+        },
+    )
+    def get(self, request):
+        query_serializer = ResponsibleUserQuerySerializer(
+            data=request.query_params,
+        )
+
+        query_serializer.is_valid(
+            raise_exception=True,
+        )
+
+        data = query_serializer.validated_data
+        search = data["search"]
+        limit = data["limit"]
+
+        eligibility_filter = (
+            Q(is_superuser=True)
+            |
+            Q(pk=request.user.pk)
+            |
+            Q(
+                group__is_active=True,
+                group__group_permissions__is_active=True,
+                group__group_permissions__permission__is_active=True,
+                group__group_permissions__permission__code=(
+                    SHIPMENT_MEMO_BE_RESPONSIBLE_PERMISSION
+                ),
+            )
+        )
+
+        users = (
+            User.objects
+            .filter(
+                is_active=True,
+                user_type=UserType.EMPLOYEE,
+            )
+            .filter(eligibility_filter)
+            .select_related("group")
+            .distinct()
+        )
+
+        if search:
+            users = users.filter(
+                Q(name__icontains=search)
+                | Q(username__icontains=search)
+                | Q(email__icontains=search)
+                | Q(group__name__icontains=search)
+            )
+
+        users = users.order_by("name")[:limit]
+
+        serializer = ResponsibleUserListResponseSerializer(
+            {
+                "count": len(users),
+                "results": users,
+            },
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            serializer.data,
+        )

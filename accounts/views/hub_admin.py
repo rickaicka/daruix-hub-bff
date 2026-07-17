@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+﻿from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.decorators import action
@@ -169,7 +169,11 @@ class AdminUserViewSet(ModelViewSet):
 
         return Response({
             "user_id": user.id,
-            "modules": HubModuleSerializer(modules, many=True).data,
+            "modules": HubModuleSerializer(
+                modules,
+                many=True,
+                context={"user": user},
+            ).data,
         })
 
 
@@ -354,27 +358,27 @@ class AdminUserGroupViewSet(ModelViewSet):
 
 @extend_schema_view(
     list=extend_schema(
-        tags=["hub-admin/grupo-permissoes"],
+        tags=["hub-admin/grupos"],
         summary="Listar permissões vinculadas a grupos",
     ),
     retrieve=extend_schema(
-        tags=["hub-admin/grupo-permissoes"],
+        tags=["hub-admin/grupos"],
         summary="Detalhar permissão vinculada a grupo",
     ),
     create=extend_schema(
-        tags=["hub-admin/grupo-permissoes"],
+        tags=["hub-admin/grupos"],
         summary="Vincular permissão a grupo",
     ),
     update=extend_schema(
-        tags=["hub-admin/grupo-permissoes"],
+        tags=["hub-admin/grupos"],
         summary="Atualizar permissão vinculada a grupo",
     ),
     partial_update=extend_schema(
-        tags=["hub-admin/grupo-permissoes"],
+        tags=["hub-admin/grupos"],
         summary="Atualizar parcialmente permissão vinculada a grupo",
     ),
     destroy=extend_schema(
-        tags=["hub-admin/grupo-permissoes"],
+        tags=["hub-admin/grupos"],
         summary="Remover permissão vinculada a grupo",
     ),
 )

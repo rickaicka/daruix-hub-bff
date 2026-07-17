@@ -1,0 +1,102 @@
+﻿Colunas de: Cadastro Obra
+--------------------------------------------------------------------------------
+cod | COUNTER | size=10
+pc | VARCHAR | size=50
+propostaID | INTEGER | size=10
+apelido | VARCHAR | size=50
+faturado | VARCHAR | size=255
+cnpjfat | VARCHAR | size=50
+iefat | VARCHAR | size=50
+endfat | VARCHAR | size=100
+fonefat | VARCHAR | size=50
+cidadefat | VARCHAR | size=50
+cepfat | VARCHAR | size=50
+estfat | VARCHAR | size=2
+contfat | VARCHAR | size=50
+fat2 | VARCHAR | size=50
+cnpjfat2 | VARCHAR | size=50
+iefat2 | VARCHAR | size=50
+endfat2 | VARCHAR | size=50
+fonefat2 | VARCHAR | size=50
+cidadefat2 | VARCHAR | size=50
+cepfat2 | VARCHAR | size=50
+estfat2 | VARCHAR | size=2
+contfat2 | VARCHAR | size=50
+endobra | VARCHAR | size=50
+foneobra | VARCHAR | size=50
+estent | VARCHAR | size=2
+cepent | VARCHAR | size=50
+cident | VARCHAR | size=50
+endentrega | VARCHAR | size=100
+contatentrega | VARCHAR | size=50
+foneentrega | VARCHAR | size=50
+endcob | VARCHAR | size=50
+fonecob | VARCHAR | size=50
+estcob | VARCHAR | size=2
+cidcob | VARCHAR | size=50
+cepcob | VARCHAR | size=50
+contcob | VARCHAR | size=50
+obs | LONGCHAR | size=1073741823
+tipocontrato | VARCHAR | size=50
+tx | INTEGER | size=10
+rg | VARCHAR | size=50
+cpf | VARCHAR | size=50
+CNPJ/CPF | VARCHAR | size=50
+IE/RG | VARCHAR | size=50
+cnpj | VARCHAR | size=50
+rg2 | VARCHAR | size=50
+estentCLI | VARCHAR | size=2
+cepentcli | VARCHAR | size=50
+cidentcli | VARCHAR | size=50
+endentregacli | VARCHAR | size=50
+contatentregacli | VARCHAR | size=50
+foneentregacli | VARCHAR | size=50
+estentDARUIX | VARCHAR | size=2
+cepentdaruix | VARCHAR | size=50
+cidentdaruix | VARCHAR | size=50
+endentregadaruix | VARCHAR | size=50
+contatentregadaruix | VARCHAR | size=50
+foneentregadaruix | VARCHAR | size=50
+detentrega | LONGCHAR | size=1073741823
+rgcli | VARCHAR | size=50
+cpfcli | VARCHAR | size=50
+taxa | VARCHAR | size=50
+VALORCONTRATADO | DOUBLE | size=53
+aditivoobs | LONGCHAR | size=1073741823
+dataInicio | DATETIME | size=19
+dataFim | DATETIME | size=19
+cei | VARCHAR | size=50
+docCeiCNO | VARCHAR | size=255
+obraFinalizada | BIT | size=1
+garantia | BIT | size=1
+alteradoPor | VARCHAR | size=50
+alteradoEm | DATETIME | size=19
+desconto | INTEGER | size=10
+criadoPor | VARCHAR | size=50
+dataFinalGarantia | DATETIME | size=19
+valorAditivo | CURRENCY | size=19
+emFase | BIT | size=1
+impostoAssTecnicaContabilValor | CURRENCY | size=19
+impostoMdoContabilValor | CURRENCY | size=19
+impostoATGerencialValor | CURRENCY | size=19
+impostoMDOGerencialValor | CURRENCY | size=19
+impostoAssTecnica | INTEGER | size=10
+impostoMdo | INTEGER | size=10
+calc1 | INTEGER | size=10
+detalheServico | LONGCHAR | size=1073741823
+cadastroMunicipalDeObra | VARCHAR | size=50
+
+Primeiros registros:
+--------------------------------------------------------------------------------
+cod | pc | propostaID | apelido | faturado | cnpjfat | iefat | endfat | fonefat | cidadefat | cepfat | estfat | contfat | fat2 | cnpjfat2 | iefat2 | endfat2 | fonefat2 | cidadefat2 | cepfat2 | estfat2 | contfat2 | endobra | foneobra | estent | cepent | cident | endentrega | contatentrega | foneentrega | endcob | fonecob | estcob | cidcob | cepcob | contcob | obs | tipocontrato | tx | rg | cpf | CNPJ/CPF | IE/RG | cnpj | rg2 | estentCLI | cepentcli | cidentcli | endentregacli | contatentregacli | foneentregacli | estentDARUIX | cepentdaruix | cidentdaruix | endentregadaruix | contatentregadaruix | foneentregadaruix | detentrega | rgcli | cpfcli | taxa | VALORCONTRATADO | aditivoobs | dataInicio | dataFim | cei | docCeiCNO | obraFinalizada | garantia | alteradoPor | alteradoEm | desconto | criadoPor | dataFinalGarantia | valorAditivo | emFase | impostoAssTecnicaContabilValor | impostoMdoContabilValor | impostoATGerencialValor | impostoMDOGerencialValor | impostoAssTecnica | impostoMdo | calc1 | detalheServico | cadastroMunicipalDeObra
+--------------------------------------------------------------------------------
+46 | 'PC05427' | None | 'RESID LUIZ KIEHL' | 'LU═S FERNANDO KIEHL' | None | None | 'R. DESEMBARGADOR VICENTE PENTEADO, 301' | '1130825295' | 'S├O PAULO' | None | 'SP' | 'LU═S KIEHL' | 'R.S. DARUIX ENGENHARIA LTDA' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | '01440030' | 'S├O PAULO' | 'R. DESEMBARGADOR VICENTE PENTEADO, 311' | None | '1130825295' | 'R. DESEMBARGADOR VICENTE PENTEADO, 301' | '1130825295' | 'SP' | 'S├O PAULO' | '01440030' | 'LU═S FERNANDO KIEHL' | None | 'AdministraþÒo' | 14 | None | '023.031.678.68' | '02735106000169' | None | None | 'RG' | None | None | None | None | None | None | None | None | None | 'R. FREI CANECA, 322 - 1║ ANDAR - CONSOLAÃ├O' | None | '1131513019' | 'Travessa da Av. Gabriel Monteiro da Silva \r\nQUADRIL┴TERO' | '2710112' | '02303167868' | None | 0.0 | None | datetime.datetime(2024, 12, 9, 0, 0) | None | None | 'CEI' | True | False | 'renato' | datetime.datetime(2025, 7, 30, 11, 49, 28) | None | 'renato' | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+48 | 'PC05219' | None | 'PORTA DO SOL' | 'Paulo Tadao Yokoi' | None | None | 'Rua Olegßrio Mariano, lote L1D -Cond. Porta do Sol' | None | 'Mairinque' | '18120000' | 'SP' | None | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | '18120000' | 'Mairinque' | 'R: Olegßrio Mariano, lote L1D -Cond. Porta do Sol' | None | None | 'Av. Naþ§es Unidas, 22540 - Bloco A' | None | 'SP' | 'SÒo Paulo' | '04795000' | None | None | None | None | 'RG' | '076.822.618-03' | None | None | 'CPF' | None | None | None | None | None | None | None | None | None | None | 'R. FREI CANECA, 322 - 1║ ANDAR - CONSOLAÃ├O' | None | '1131513019' | 'RODOVIA CASTELO BRANCO KM 63 - SENTIDO S├O PAULO\r\nTRAVESSA DA RUA GONÃALVES DIAS' | '08.038.291-' | '076.822.618-03' | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | None | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+49 | 'PC11071' | None | 'VILAS BÈAS' | 'S╔RGIO PAULO VILAS BÈAS SOUZA' | None | None | 'ALAMEDA ARARAGUARA, 696 - RESIDENCIAL 04' | '1141936062' | 'SANTANA DO PARNA═BA' | '06542045' | 'SP' | 'ADRIANA' | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | None | None | 'ALAMEDA ARARAGUARA. 696' | None | '1147728400' | 'ALAMEDA ARARAGUARA, 696 - RESIDENCIAL 04' | '1191990904' | 'SP' | 'S├O PAULO' | '06542045' | 'S╔RGIO PAULO' | None | None | 0 | None | '118.409.275-34' | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | '97622486' | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | None | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+51 | 'PC06163' | None | 'GUAIANAZES' | 'R.S.DARUIX ENGENHARIA LTDA' | '59610253000120' | '113548074114' | 'R. FREI CANECA, 322 - 1║ANDAR - CONSOLAÃ├O' | '1131513019' | 'S├O PAULO' | '01307000' | 'SP' | 'MONICA' | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | None | None | 'R. CARANA═BA, 23-A - GUAIANAZES' | None | None | 'R. FREI CANECA, 322 1║ ANDAR - CONSOLAÃ├O' | '1131513019' | 'SP' | 'S├O PAULO' | '01307000' | None | None | None | 0 | None | None | '59610253000120' | '113548074114' | None | None | None | None | None | None | None | None | None | None | None | 'R. FREI CANECA, 322 - 1║ANDAR - CONSOLAÃ├O' | None | '1131513019' | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | None | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+52 | 'PC05074' | None | 'GalpÒo III' | 'CIBAHIA TABACOS ESPECIAIS LTDA' | '96833058000195' | '373037324110' | 'R. APAR═CIO CORREA DE GODOY, 167' | '1147895181' | 'S├O PAULO' | '06693805' | 'SP' | 'SR. ALVARO' | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | None | None | 'R. APAR═CIO CORREA DE GODOY, 167' | None | '1147895181' | 'R. APAR═CIO CORREA DE GODOY, 167' | '1147895181' | 'SP' | 'S├O PAULO' | '06693805' | 'SR. ALVARO' | None | 'AdministraþÒo' | 12 | None | None | '96833058000195' | '373037324110' | None | None | None | None | None | None | None | None | None | None | None | None | None | None | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | None | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+53 | 'PC06150' | None | 'Green Garden' | 'CONDOM═NIO GREEN GARDEN' | '58932930000163' | None | 'AV. JURUC╩, 135 - INDIANËPOLIS' | None | 'S├O PAULO' | '04080010' | 'SP' | None | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | '04080010' | 'S├O PAULO' | 'AV. JURUC╩, 135 - INDIANËPOLIS' | None | None | 'AV. JURUC╩, 135 - INDIANËPOLIS' | None | 'SP' | 'S├O PAULO' | '04080010' | None | None | 'AdministraþÒo' | 13 | None | None | '58932930000163' | None | None | None | None | None | None | None | None | None | None | None | None | 'Rua Frei Caneca, 322 1║ andar' | None | None | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | 'renato' | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+54 | 'PC04381' | None | 'ASSA═ ARICANDUVA' | 'ASSA═ COMERCIAL E IMPORTADORA LTDA.' | '04355083000435' | '116218136110' | 'AV. ARICANDUVA, 333 JD. ARICANDUVA' | '1166940444' | 'S├O PAULO' | '03527000' | 'SP' | None | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | '03527000' | 'S├O PAULO' | 'AV. ARICANDUVA, 333 JD. ARICANDUVA' | None | '1166940444' | 'R. MANILHA, 42 - SOBRE LOJA - VILA CARR├O' | '1134115000' | 'SP' | 'S├O PAULO' | '03445050' | None | None | 'Preþo Global' | 0 | 'INSCRIÃ├O EST.' | None | '46499224001081' | '117.009.007-116' | 'CNPJ' | None | None | None | None | None | None | None | None | None | None | 'Rua Frei Caneca, 322 1║ andar' | None | None | 'ENTRADA PELA RUA RODEIO ( POSTO HUDSON)' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | 'alvaro' | datetime.datetime(2012, 10, 5, 18, 33, 43) | None | None | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | 'AmpliaþÒo  e reforma da Loja e do PrÚdio Administrativo' | None
+55 | 'PC06218' | None | 'Latorre - JundiaÝ' | 'INDUSTRIAS ANDRADE LA TORRE S/A' | '50931237000164' | '407021293113' | 'R. S├O BENTO, 41 - CENTRO' | None | 'JUNDIA═' | '13201033' | 'SP' | None | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | None | None | 'R. S├O BENTO, 41 - CENTRO' | None | None | 'R. S├O BENTO, 41 - CENTRO' | None | 'SP' | 'JUNDIA═' | '13201033' | None | None | None | 0 | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | None | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+57 | 'PC03034' | None | 'PACAEMB┌' | 'TEBAS EMPREENDIMENTOS E PARTICIPAÃıES LTDA.' | None | None | 'RUA TABAPU├, 41 CJ. 55' | None | 'SÒo Paulo' | '04533010' | 'SP' | None | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | '01234000' | 'S├O PAULO' | 'AV. PACAEMB┌, 966' | None | None | 'RUA: TABAPU├, 41 CJ 55' | None | 'SP' | 'S├O PAULO' | '04533010' | None | None | None | 11 | 'INSCRIÃ├O EST.' | None | '02735106000169' | 'ISENTO' | 'CNPJ' | None | None | None | None | None | None | None | None | None | None | None | None | None | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | 'renato' | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
+58 | 'PC06332' | None | 'ClÝnica Med Baby' | None | None | None | None | None | None | None | 'SP' | None | 'R.S. Daruix Engenharia Ltda' | '59.610.253/0001-20' | '113.548.074.114' | 'Rua Airi, 103' | '(11)3151-3019' | 'SÒo Paulo' | '03310-010' | 'SP' | None | None | None | 'SP' | '03310000' | 'S├O PAULO' | 'RUA ITAPURA, 1089' | None | None | 'Rua Frei Caneca, 322 1║ andar' | '1131513019' | 'SP' | 'S├O PAULO' | '01307000' | 'CINTIA' | None | None | 0 | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | 'ENVIAR ARQUIVO XML E PDF DAS NOTAS FISCAIS PARA O SEGUINTE E-MAIL : controladoria@daruix.com.br' | None | None | None | 0.0 | None | None | None | None | 'CEI' | True | False | None | None | None | 'renato' | None | Decimal('0.0000') | False | None | None | None | None | None | None | None | None | None
