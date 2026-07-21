@@ -1,68 +1,62 @@
-﻿from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.serializers.hub_module_serializer import (
-    HubModuleFavoriteSerializer,
-    HubModuleSerializer,
+    HubMenuItemFavoriteSerializer,
+    HubMenuItemSerializer,
 )
-from accounts.services.hub_module_service import set_user_module_favorite
+from accounts.services.hub_module_service import set_user_menu_item_favorite
 
 
-class HubModuleFavoriteView(APIView):
+class HubMenuItemFavoriteView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        tags=["hub/modulos"],
-        summary="Favoritar ou desfavoritar módulo",
-        request=HubModuleFavoriteSerializer,
+        tags=["hub/funcionalidades"],
+        summary="Favoritar ou desfavoritar funcionalidade",
+        request=HubMenuItemFavoriteSerializer,
         responses={
-            200: HubModuleSerializer,
-            400: OpenApiResponse(
-                description="Payload inválido.",
-            ),
+            200: HubMenuItemSerializer,
+            400: OpenApiResponse(description="Payload inválido."),
             404: OpenApiResponse(
                 description=(
-                    "Módulo não encontrado ou sem acesso."
+                    "Funcionalidade não encontrada, não favoritada ou sem acesso."
                 ),
             ),
         },
     )
     def patch(self, request, slug):
-        serializer = HubModuleFavoriteSerializer(
-            data=request.data,
-        )
-        serializer.is_valid(
-            raise_exception=True,
-        )
+        serializer = HubMenuItemFavoriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        favorito = serializer.validated_data["favorito"]
-
-        module = set_user_module_favorite(
+        menu_item = set_user_menu_item_favorite(
             user=request.user,
             slug=slug,
-            favorito=favorito,
+            favorito=serializer.validated_data["favorito"],
         )
 
-        if not module:
+        if not menu_item:
             return Response(
                 {
                     "detail": (
-                        "Módulo não encontrado ou sem acesso "
-                        "para este usuário."
+                        "Funcionalidade não encontrada, não favoritada "
+                        "ou sem acesso para este usuário."
                     )
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         return Response(
-            HubModuleSerializer(
-                module,
-                context={
-                    "user": request.user,
-                },
+            HubMenuItemSerializer(
+                menu_item,
+                context={"user": request.user},
             ).data,
             status=status.HTTP_200_OK,
         )
+
+
+# Mantém imports antigos funcionando até accounts/urls.py ser atualizado.
+HubModuleFavoriteView = HubMenuItemFavoriteView

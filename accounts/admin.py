@@ -1,5 +1,7 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.utils.html import format_html
 
 from accounts.models import (
     Client,
@@ -9,8 +11,9 @@ from accounts.models import (
     Supplier,
     User,
     UserGroup,
+    HubMenuItem,
     HubModule,
-    UserHubModuleFavorite,
+    UserHubMenuItemFavorite,
 )
 
 
@@ -479,12 +482,28 @@ class SupplierAdmin(admin.ModelAdmin):
         ),
     )
 
+class HubModuleAdminForm(forms.ModelForm):
+    class Meta:
+        model = HubModule
+        fields = "__all__"
+        widgets = {
+            "icon_color": forms.TextInput(
+                attrs={
+                    "type": "color",
+                    "style": "width: 72px; height: 40px; padding: 2px;",
+                }
+            )
+        }
+
+
 @admin.register(HubModule)
 class HubModuleAdmin(admin.ModelAdmin):
+    form = HubModuleAdminForm
     list_display = [
         "name",
         "slug",
         "route",
+        "icon_color_preview",
         "permission",
         "desktop_enabled",
         "mobile_enabled",
@@ -516,17 +535,92 @@ class HubModuleAdmin(admin.ModelAdmin):
         "name",
     ]
 
-@admin.register(UserHubModuleFavorite)
-class UserHubModuleFavoriteAdmin(admin.ModelAdmin):
+    @admin.display(description="Cor", ordering="icon_color")
+    def icon_color_preview(self, obj):
+        return format_html(
+            '<span style="display:inline-block;width:22px;height:22px;'
+            'border-radius:6px;border:1px solid #777;background:{};" '
+            'title="{}"></span>',
+            obj.icon_color,
+            obj.icon_color,
+        )
+
+
+@admin.register(HubMenuItem)
+class HubMenuItemAdmin(admin.ModelAdmin):
     list_display = [
         "id",
-        "user",
+        "name",
         "module",
-        "created_at",
+        "parent",
+        "route",
+        "permission_codes",
+        "favoritable",
+        "desktop_enabled",
+        "mobile_enabled",
+        "legacy_enabled",
+        "is_active",
+        "order",
     ]
 
     list_filter = [
         "module",
+        "favoritable",
+        "desktop_enabled",
+        "mobile_enabled",
+        "legacy_enabled",
+        "is_active",
+    ]
+
+    search_fields = [
+        "name",
+        "slug",
+        "route",
+        "module__name",
+        "module__slug",
+        "permissions__code",
+    ]
+
+    autocomplete_fields = [
+        "module",
+        "parent",
+        "permissions",
+    ]
+
+    ordering = [
+        "module__order",
+        "module__name",
+        "order",
+        "name",
+    ]
+
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+    ]
+
+    @admin.display(description="Permissões")
+    def permission_codes(self, obj):
+        codes = obj.permissions.order_by("code").values_list(
+            "code",
+            flat=True,
+        )
+        return ", ".join(codes) or "Herda do módulo"
+
+
+@admin.register(UserHubMenuItemFavorite)
+class UserHubMenuItemFavoriteAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "menu_item",
+        "module_name",
+        "order",
+        "created_at",
+    ]
+
+    list_filter = [
+        "menu_item__module",
         "created_at",
     ]
 
@@ -534,21 +628,33 @@ class UserHubModuleFavoriteAdmin(admin.ModelAdmin):
         "user__username",
         "user__name",
         "user__email",
-        "module__name",
-        "module__slug",
+        "menu_item__name",
+        "menu_item__slug",
+        "menu_item__module__name",
     ]
 
     autocomplete_fields = [
         "user",
-        "module",
+        "menu_item",
     ]
 
     ordering = [
         "user__name",
-        "module__order",
-        "module__name",
+        "order",
+        "menu_item__module__order",
+        "menu_item__order",
+        "menu_item__name",
     ]
 
     readonly_fields = [
         "created_at",
     ]
+
+    @admin.display(
+        description="Módulo",
+        ordering="menu_item__module__name",
+    )
+    def module_name(self, obj):
+        return obj.menu_item.module.name
+
+

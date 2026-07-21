@@ -2,7 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from accounts.views.auth import LoginView, LogoutView, MeView, RefreshView
-from accounts.views.hub_module_favorite import HubModuleFavoriteView
+from accounts.views.hub_module_favorite import HubModuleFavoriteView, HubMenuItemFavoriteView
 from accounts.views.permissioning import (
     GroupPermissionViewSet,
     PermissionViewSet,
@@ -96,4 +96,12 @@ urlpatterns = [
         name="hub-module-favorite",
     ),
     path("", include(router.urls)),
+]
+
+urlpatterns += [
+    path(
+        "hub/funcionalidades/<slug:slug>/favorito/",
+        HubMenuItemFavoriteView.as_view(),
+        name="hub-menu-item-favorite",
+    ),
 ]

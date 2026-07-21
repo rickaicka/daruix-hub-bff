@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models
 
 from accounts.models.permission import Permission
@@ -27,6 +28,19 @@ class HubModule(models.Model):
         default="",
         verbose_name="Ícone",
         help_text="Nome do ícone usado no front. Exemplo: dashboard, payments, engineering.",
+    )
+
+    icon_color = models.CharField(
+        max_length=7,
+        default="#CC0D0E",
+        validators=[
+            RegexValidator(
+                regex=r"^#[0-9A-Fa-f]{6}$",
+                message="Informe uma cor hexadecimal válida. Exemplo: #CC0D0E.",
+            )
+        ],
+        verbose_name="Cor do ícone",
+        help_text="Cor hexadecimal usada pelo ícone no front.",
     )
 
     permission = models.ForeignKey(
