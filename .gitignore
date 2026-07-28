@@ -1,0 +1,77 @@
+# =============================================================================
+# Daruix Hub BFF — Django / Python
+# =============================================================================
+
+# Ambientes virtuais
+.venv/
+.venv32/
+venv/
+env/
+ENV/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Python: bytecode e caches
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+local_settings.py
+
+# Bancos e arquivos locais do legado
+*.accdb
+*.mdb
+*.ldb
+
+# Testes, cobertura e análise
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Builds e pacotes Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# IDEs e editores
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+
+# Arquivos temporários
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
