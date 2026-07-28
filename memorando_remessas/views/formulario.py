@@ -55,29 +55,13 @@ class ShipmentMemoOptionsView(APIView):
             )
         )
 
-        species = options.filter(
-            option_type=ShipmentMemoOptionType.SPECIES,
-        )
-
         purposes = options.filter(
             option_type=ShipmentMemoOptionType.PURPOSE,
         )
 
-        requests = options.filter(
-            option_type=ShipmentMemoOptionType.REQUEST,
-        )
-
         payload = {
-            "species": ShipmentMemoOptionSerializer(
-                species,
-                many=True,
-            ).data,
             "purposes": ShipmentMemoOptionSerializer(
                 purposes,
-                many=True,
-            ).data,
-            "requests": ShipmentMemoOptionSerializer(
-                requests,
                 many=True,
             ).data,
         }

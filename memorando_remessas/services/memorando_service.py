@@ -36,6 +36,9 @@ from memorando_remessas.services.memorando_email_service import (
     ShipmentMemoEmailError,
     send_shipment_memo_email,
 )
+from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 
 
 logger = logging.getLogger(__name__)
@@ -665,6 +668,15 @@ def send_shipment_memo(
                     "falha no envio podem ser enviados."
                 )
             })
+        recipient_emails, cc_emails = (
+            _get_configured_email_recipients()
+        )
+
+        shipment_memo.recipient_emails = (
+            recipient_emails
+        )
+
+        shipment_memo.cc_emails = cc_emails
 
         _validate_ready_to_send(
             shipment_memo
@@ -1066,3 +1078,61 @@ def create_shipment_memo_revision(
     )
 
     return new_memo
+
+def _get_configured_email_recipients(
+) -> tuple[list[str], list[str]]:
+    recipient = str(
+        getattr(
+            settings,
+            "SHIPMENT_MEMO_RECIPIENT_EMAIL",
+            "",
+        )
+        or ""
+    ).strip().lower()
+
+    if not recipient:
+        raise serializers.ValidationError({
+            "detail": (
+                "O e-mail destinatário dos memorandos "
+                "não está configurado no servidor."
+            ),
+        })
+
+    try:
+        validate_email(recipient)
+    except DjangoValidationError as error:
+        raise serializers.ValidationError({
+            "detail": (
+                "O e-mail destinatário configurado para "
+                "os memorandos é inválido."
+            ),
+        }) from error
+
+    configured_cc = getattr(
+        settings,
+        "SHIPMENT_MEMO_CC_EMAILS",
+        [],
+    )
+
+    cc_emails: list[str] = []
+
+    for value in configured_cc:
+        email = str(value or "").strip().lower()
+
+        if not email or email == recipient:
+            continue
+
+        try:
+            validate_email(email)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({
+                "detail": (
+                    "Um dos e-mails configurados para "
+                    "receber cópia dos memorandos é inválido."
+                ),
+            }) from error
+
+        if email not in cc_emails:
+            cc_emails.append(email)
+
+    return [recipient], cc_emails

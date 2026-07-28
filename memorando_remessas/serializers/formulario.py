@@ -28,15 +28,8 @@ class ShipmentMemoOptionSerializer(
 class ShipmentMemoOptionsResponseSerializer(
     serializers.Serializer
 ):
-    species = ShipmentMemoOptionSerializer(
-        many=True,
-    )
 
     purposes = ShipmentMemoOptionSerializer(
-        many=True,
-    )
-
-    requests = ShipmentMemoOptionSerializer(
         many=True,
     )
 

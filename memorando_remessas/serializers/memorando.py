@@ -17,23 +17,6 @@ from memorando_remessas.services import (
 )
 
 
-def _normalize_email_list(
-    values: list[str],
-) -> list[str]:
-    normalized_emails: list[str] = []
-
-    for value in values or []:
-        email = str(value or "").strip().lower()
-
-        if not email:
-            continue
-
-        if email not in normalized_emails:
-            normalized_emails.append(email)
-
-    return normalized_emails
-
-
 class ShipmentMemoResponsibleSerializer(
     serializers.ModelSerializer
 ):
@@ -131,14 +114,12 @@ class ShipmentMemoSerializer(
 
     recipient_emails = serializers.ListField(
         child=serializers.EmailField(),
-        required=False,
-        allow_empty=True,
+        read_only=True,
     )
 
     cc_emails = serializers.ListField(
         child=serializers.EmailField(),
-        required=False,
-        allow_empty=True,
+        read_only=True,
     )
 
     responsible_user_ids = serializers.ListField(
@@ -274,6 +255,8 @@ class ShipmentMemoSerializer(
             "work_name",
             "client_name",
             "client_document",
+            "recipient_emails",
+            "cc_emails",
             "created_by",
             "updated_by",
             "sent_by",
@@ -285,85 +268,6 @@ class ShipmentMemoSerializer(
             "created_at",
             "updated_at",
         ]
-
-    def validate_recipient_emails(
-        self,
-        values,
-    ):
-        return _normalize_email_list(
-            values
-        )
-
-    def validate_cc_emails(
-        self,
-        values,
-    ):
-        return _normalize_email_list(
-            values
-        )
-
-    def validate(
-        self,
-        attrs,
-    ):
-        attrs = super().validate(attrs)
-
-        instance_recipient_emails = (
-            self.instance.recipient_emails
-            if self.instance
-            else []
-        )
-
-        instance_cc_emails = (
-            self.instance.cc_emails
-            if self.instance
-            else []
-        )
-
-        recipient_emails = attrs.get(
-            "recipient_emails",
-            instance_recipient_emails,
-        )
-
-        cc_emails = attrs.get(
-            "cc_emails",
-            instance_cc_emails,
-        )
-
-        recipient_emails = _normalize_email_list(
-            recipient_emails
-        )
-
-        cc_emails = _normalize_email_list(
-            cc_emails
-        )
-
-        recipient_email_set = set(
-            recipient_emails
-        )
-
-        cc_emails = [
-            email
-            for email in cc_emails
-            if email not in recipient_email_set
-        ]
-
-        if (
-            "recipient_emails" in attrs
-            or not self.instance
-        ):
-            attrs["recipient_emails"] = (
-                recipient_emails
-            )
-
-        if (
-            "cc_emails" in attrs
-            or "recipient_emails" in attrs
-            or not self.instance
-        ):
-            attrs["cc_emails"] = cc_emails
-
-        return attrs
 
     def create(
         self,

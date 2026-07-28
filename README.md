@@ -211,7 +211,7 @@ conexão via `legacy_reader/access_connection.py`
 Variáveis relacionadas
 ```env
 LEGACY_AUTH_ENABLED=True
-LEGACY_DB_PATH=D:\Projects\SGO_be.accdb
+LEGACY_DB_PATH=D:\Projects\SGO.accdb
 LEGACY_PYTHON_PATH=D:\Projects\Daruix\daruix-hub-bff\.venv32\Scripts\python.exe
 LEGACY_AUTH_BRIDGE_PATH=D:\Projects\Daruix\daruix-hub-bff\legacy_reader\auth_bridge.py
 ```
@@ -239,7 +239,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 SECRET_KEY=troque-essa-chave-em-dev
 
 LEGACY_AUTH_ENABLED=True
-LEGACY_DB_PATH=D:\Projects\SGO_be.accdb
+LEGACY_DB_PATH=D:\Projects\SGO.accdb
 LEGACY_PYTHON_PATH=D:\Projects\Daruix\daruix-hub-bff\.venv32\Scripts\python.exe
 LEGACY_AUTH_BRIDGE_PATH=D:\Projects\Daruix\daruix-hub-bff\legacy_reader\auth_bridge.py
 ```

@@ -15,9 +15,7 @@ class WorkSource(models.TextChoices):
 
 
 class ShipmentMemoOptionType(models.TextChoices):
-    SPECIES = "ESPECIE", "Espécie"
     PURPOSE = "FINALIDADE", "Finalidade"
-    REQUEST = "SOLICITACAO", "Solicitação"
 
 
 class ShipmentMemoHistoryAction(models.TextChoices):

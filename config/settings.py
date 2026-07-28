@@ -13,10 +13,14 @@ SECRET_KEY = config(
 
 DEBUG = config("DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS = config(
-    "ALLOWED_HOSTS",
-    default="localhost,127.0.0.1",
-).split(",")
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in config(
+        "ALLOWED_HOSTS",
+        default="localhost,127.0.0.1,192.168.0.74",
+    ).split(",")
+    if host.strip()
+]
 
 
 INSTALLED_APPS = [
@@ -99,6 +103,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:4300",
     "http://127.0.0.1:4300",
     "http://192.168.0.73:4300",
+    "http://192.168.0.74:4300",
 ]
 
 
@@ -214,3 +219,81 @@ SHIPMENT_MEMO_ALLOWED_FILE_EXTENSIONS = [
     ".png",
     ".zip",
 ]
+
+SHIPMENT_MEMO_RECIPIENT_EMAIL = config(
+    "SHIPMENT_MEMO_RECIPIENT_EMAIL",
+    default="",
+).strip().lower()
+
+SHIPMENT_MEMO_CC_EMAILS = [
+    email.strip().lower()
+    for email in config(
+        "SHIPMENT_MEMO_CC_EMAILS",
+        default="",
+    ).split(",")
+    if email.strip()
+]
+
+
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default=(
+        "django.core.mail.backends."
+        "console.EmailBackend"
+        if DEBUG
+        else
+        "django.core.mail.backends."
+        "smtp.EmailBackend"
+    ),
+)
+
+EMAIL_HOST = config(
+    "EMAIL_HOST",
+    default="",
+)
+
+EMAIL_PORT = config(
+    "EMAIL_PORT",
+    default=587,
+    cast=int,
+)
+
+EMAIL_HOST_USER = config(
+    "EMAIL_HOST_USER",
+    default="",
+)
+
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+
+EMAIL_USE_TLS = config(
+    "EMAIL_USE_TLS",
+    default=True,
+    cast=bool,
+)
+
+EMAIL_USE_SSL = config(
+    "EMAIL_USE_SSL",
+    default=False,
+    cast=bool,
+)
+
+EMAIL_TIMEOUT = config(
+    "EMAIL_TIMEOUT",
+    default=30,
+    cast=int,
+)
+
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL",
+    default=EMAIL_HOST_USER or "Daruix Hub <no-reply@daruix.com.br>",
+)
+
+SERVER_EMAIL = config(
+    "SERVER_EMAIL",
+    default=DEFAULT_FROM_EMAIL,
+)
+
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ValueError(
+        "EMAIL_USE_TLS e EMAIL_USE_SSL não podem estar ativos ao mesmo tempo."
+    )
