@@ -32,7 +32,7 @@ def config_list(name: str, default: str = "") -> list[str]:
 
 ALLOWED_HOSTS = config_list(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,192.168.0.74,192.168.15.11,10.0.2.2",
+    "daruix-engenharia.vps-kinghost.net,hub.daruix-engenharia.vps-kinghost.net,localhost,127.0.0.1,192.168.0.74,192.168.15.11,10.0.2.2",
 )
 
 
