@@ -1,5 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
+
 import dj_database_url
 from decouple import config
 
@@ -11,16 +12,28 @@ SECRET_KEY = config(
     default="django-insecure-dev-key",
 )
 
-DEBUG = config("DEBUG", default=True, cast=bool)
+DEBUG = config(
+    "DEBUG",
+    default=True,
+    cast=bool,
+)
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in config(
-        "ALLOWED_HOSTS",
-        default="localhost,127.0.0.1,192.168.0.74",
-    ).split(",")
-    if host.strip()
-]
+if not DEBUG and SECRET_KEY == "django-insecure-dev-key":
+    raise ValueError("Defina SECRET_KEY no ambiente de produção.")
+
+
+def config_list(name: str, default: str = "") -> list[str]:
+    return [
+        value.strip()
+        for value in config(name, default=default).split(",")
+        if value.strip()
+    ]
+
+
+ALLOWED_HOSTS = config_list(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,192.168.0.74,192.168.15.11,10.0.2.2",
+)
 
 
 INSTALLED_APPS = [
@@ -30,15 +43,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "corsheaders",
-
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "django_filters",
-
     "accounts",
     "memorando_remessas.apps.MemorandoRemessasConfig",
 ]
@@ -49,11 +59,9 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "accounts.authentication.SessionJWTAuthentication",
     ],
-
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -63,7 +71,6 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(hours=12),
-
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
@@ -85,9 +92,9 @@ SPECTACULAR_SETTINGS = {
 
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
-
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -97,14 +104,24 @@ MIDDLEWARE = [
 ]
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-    "http://localhost:8100",
-    "http://localhost:4300",
-    "http://127.0.0.1:4300",
-    "http://192.168.0.73:4300",
-    "http://192.168.0.74:4300",
-]
+CORS_ALLOWED_ORIGINS = config_list(
+    "CORS_ALLOWED_ORIGINS",
+    (
+        "http://localhost:4200,"
+        "http://localhost:8100,"
+        "http://localhost:4300,"
+        "http://127.0.0.1:4300,"
+        "http://192.168.0.73:4300,"
+        "http://192.168.0.74:4300,"
+        "http://192.168.15.11:4300,"
+        "http://10.0.2.2:4300,"
+        "https://localhost"
+    ),
+)
+
+CSRF_TRUSTED_ORIGINS = config_list(
+    "CSRF_TRUSTED_ORIGINS",
+)
 
 
 ROOT_URLCONF = "config.urls"
@@ -136,22 +153,35 @@ DATABASES = {
             default="postgresql://postgres:admin@localhost:5432/sgo-daruix-web",
         ),
         conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
+        ),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "MinimumLengthValidator"
+        ),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "CommonPasswordValidator"
+        ),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "NumericPasswordValidator"
+        ),
     },
 ]
 
@@ -162,10 +192,34 @@ USE_I18N = True
 USE_TZ = True
 
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 
-LEGACY_AUTH_ENABLED = config("LEGACY_AUTH_ENABLED", default=True, cast=bool)
+LEGACY_AUTH_ENABLED = config(
+    "LEGACY_AUTH_ENABLED",
+    default=True,
+    cast=bool,
+)
+
+LEGACY_DB_PATH = config(
+    "LEGACY_DB_PATH",
+    default="",
+)
 
 LEGACY_PYTHON_PATH = config(
     "LEGACY_PYTHON_PATH",
@@ -191,9 +245,6 @@ LEGACY_BRIDGE_TIMEOUT_SECONDS = config(
     default=30,
     cast=int,
 )
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
 
 
 SHIPMENT_MEMO_MAX_FILE_SIZE_MB = config(
@@ -238,12 +289,9 @@ SHIPMENT_MEMO_CC_EMAILS = [
 EMAIL_BACKEND = config(
     "EMAIL_BACKEND",
     default=(
-        "django.core.mail.backends."
-        "console.EmailBackend"
+        "django.core.mail.backends.console.EmailBackend"
         if DEBUG
-        else
-        "django.core.mail.backends."
-        "smtp.EmailBackend"
+        else "django.core.mail.backends.smtp.EmailBackend"
     ),
 )
 
@@ -263,7 +311,10 @@ EMAIL_HOST_USER = config(
     default="",
 )
 
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_PASSWORD = config(
+    "EMAIL_HOST_PASSWORD",
+    default="",
+)
 
 EMAIL_USE_TLS = config(
     "EMAIL_USE_TLS",
