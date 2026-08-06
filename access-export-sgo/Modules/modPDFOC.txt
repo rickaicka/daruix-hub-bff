@@ -1,0 +1,179 @@
+
+Option Compare Database
+Option Explicit
+
+Public Sub GerarPDFOC(ByVal frm As Form, Optional ByVal modoAutorizacao As Boolean = True)
+    On Error GoTo TrataErro
+
+    Dim strPC As String
+    Dim strFornecedor As String
+    Dim strPrefixo As String
+    Dim strSufixo As String
+    Dim strOC As String
+    Dim strArquivoNormal As String
+    Dim strArquivoApp As String
+    Dim pastaPC As String
+    Dim pastaApp As String
+    Dim caminhoPdfNormal As String
+    Dim caminhoPdfApp As String
+    Dim nomeRelatorio As String
+    Dim resposta As VbMsgBoxResult
+    Dim caminhoFinalNormal As String
+
+    strPC = UCase$(Nz(frm!PC, ""))
+    strFornecedor = LimparNomeArquivo(Nz(frm!fornec, ""))
+    strPrefixo = Trim$(Nz(frm!strPrefixo, ""))
+    strSufixo = Trim$(Nz(frm!strSufixo, ""))
+    strOC = Trim$(Nz(frm!strOC, ""))
+
+    If strPC = "" Then
+        MsgBox "PC não informado.", vbExclamation
+        Exit Sub
+    End If
+
+    If strOC = "" Then
+        If strPrefixo <> "" And strSufixo <> "" Then
+            strOC = strPrefixo & "-" & strSufixo
+        End If
+    End If
+
+    If strOC = "" Or strOC = "-" Then
+        MsgBox "Número da OC inválido.", vbExclamation
+        Exit Sub
+    End If
+
+    nomeRelatorio = "repOrdemDeCompra"
+
+    pastaPC = "\\conan\pedidos\" & strPC & "\"
+    pastaApp = pastaPC & "APP\"
+
+    GarantirPasta pastaPC
+    GarantirPasta pastaApp
+
+    strArquivoNormal = strFornecedor & " (" & strOC & ").pdf"
+    strArquivoApp = strOC & ".pdf"
+
+    caminhoPdfNormal = pastaPC & strArquivoNormal
+    caminhoPdfApp = pastaApp & strArquivoApp
+    caminhoFinalNormal = caminhoPdfNormal
+
+    If Dir(caminhoPdfNormal) <> "" Then
+        If modoAutorizacao Then
+            caminhoFinalNormal = GerarNomeComRevisao(pastaPC, strFornecedor, strOC)
+        Else
+            resposta = MsgBox( _
+                "Já existe um PDF desta OC." & vbCrLf & vbCrLf & _
+                "Deseja substituir o arquivo existente?", _
+                vbQuestion + vbYesNo + vbDefaultButton2, _
+                "PDF já existente" _
+            )
+
+            If resposta = vbNo Then Exit Sub
+
+            On Error Resume Next
+            Kill caminhoPdfNormal
+            On Error GoTo TrataErro
+
+            caminhoFinalNormal = caminhoPdfNormal
+        End If
+    End If
+
+    On Error Resume Next
+    TempVars.Remove "CodigoOC"
+    On Error GoTo TrataErro
+
+    TempVars.Add "CodigoOC", frm.Controls("codigo").Value
+
+    DoCmd.OutputTo acOutputReport, nomeRelatorio, acFormatPDF, caminhoFinalNormal, False
+
+    If Dir(caminhoPdfApp) = "" Then
+        FileCopy caminhoFinalNormal, caminhoPdfApp
+    Else
+        resposta = MsgBox( _
+            "Essa OC foi enviada ao fornecedor em substituição da original?" & vbCrLf & vbCrLf & _
+            "Sim = substituir o PDF da pasta APP" & vbCrLf & _
+            "Não = manter o PDF original", _
+            vbQuestion + vbYesNo + vbDefaultButton2, _
+            "Confirmação APP" _
+        )
+
+        If resposta = vbYes Then
+            On Error Resume Next
+            Kill caminhoPdfApp
+            On Error GoTo TrataErro
+            FileCopy caminhoFinalNormal, caminhoPdfApp
+        End If
+    End If
+
+Saida:
+    On Error Resume Next
+    TempVars.Remove "CodigoOC"
+    On Error GoTo 0
+    Exit Sub
+
+TrataErro:
+    MsgBox Err.Description, vbExclamation, "Erro ao gerar PDF da OC"
+    Resume Saida
+End Sub
+
+Public Function GerarNomeComRevisao(ByVal pasta As String, ByVal Fornecedor As String, ByVal oc As String) As String
+    Dim i As Integer
+    Dim NOME As String
+
+    i = 1
+
+    Do
+        NOME = pasta & Fornecedor & " (" & oc & ") (rev-" & Format(i, "00") & ").pdf"
+        If Dir(NOME) = "" Then Exit Do
+        i = i + 1
+    Loop
+
+    GerarNomeComRevisao = NOME
+End Function
+
+Public Function LimparNomeArquivo(ByVal texto As String) As String
+    texto = Trim$(Nz(texto, ""))
+
+    texto = Replace(texto, "\", "-")
+    texto = Replace(texto, "/", "-")
+    texto = Replace(texto, ":", "-")
+    texto = Replace(texto, "*", "")
+    texto = Replace(texto, "?", "")
+    texto = Replace(texto, """", "")
+    texto = Replace(texto, "<", "")
+    texto = Replace(texto, ">", "")
+    texto = Replace(texto, "|", "-")
+
+    Do While InStr(texto, "  ") > 0
+        texto = Replace(texto, "  ", " ")
+    Loop
+
+    Do While Len(texto) > 0 And (Right$(texto, 1) = "." Or Right$(texto, 1) = " ")
+        texto = Left$(texto, Len(texto) - 1)
+    Loop
+
+    LimparNomeArquivo = texto
+End Function
+
+Public Sub GarantirPasta(ByVal caminhoPasta As String)
+
+    Dim fso As Object
+    Dim pastaPai As String
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    If fso.FolderExists(caminhoPasta) Then Exit Sub
+
+    pastaPai = fso.GetParentFolderName(caminhoPasta)
+
+    If pastaPai <> "" Then
+        If Not fso.FolderExists(pastaPai) Then
+            MsgBox "Pasta pai inexistente ou inacessível:" & vbCrLf & vbCrLf & pastaPai, _
+                   vbExclamation, "GarantirPasta"
+            Exit Sub
+        End If
+    End If
+
+    fso.CreateFolder caminhoPasta
+
+End Sub

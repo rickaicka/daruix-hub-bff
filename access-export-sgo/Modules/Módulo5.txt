@@ -1,0 +1,33 @@
+Option Compare Database
+
+Sub RMAtual()
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sqlConsulta As String
+    
+    ' Nome da sua consulta salva no Access ou comando SQL
+    sqlConsulta = "SELECT * FROM cnsRMAtual" ' Substitua pelo nome real
+    
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset(sqlConsulta)
+    
+    ' Verifica se a consulta retornou algum registro
+    If Not rs.EOF Then
+        rs.MoveFirst ' Vai para o primeiro registro
+        
+        ' Loop para percorrer todos os registros retornados
+        Do While Not rs.EOF
+            ' Exemplo: Imprime o resultado do primeiro campo na Janela de Verificação Imediata
+            Debug.Print rs.Fields(0).Value
+            
+            rs.MoveNext ' Vai para o próximo registro
+        Loop
+    Else
+        MsgBox "A consulta não retornou dados."
+    End If
+    
+    ' Limpa a memória
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Sub

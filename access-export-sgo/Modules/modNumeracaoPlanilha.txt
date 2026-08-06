@@ -1,0 +1,40 @@
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = False
+Attribute VB_Exposed = False
+'=== ModNumeracaoPlanilha.bas =====================================
+Option Compare Database
+Option Explicit
+
+Public Function ApenasDigitos(ByVal s As String) As String
+    Dim i As Long, r As String, ch As String
+    For i = 1 To Len(s)
+        ch = Mid$(s, i, 1)
+        If ch >= "0" And ch <= "9" Then r = r & ch
+    Next
+    ApenasDigitos = r
+End Function
+
+
+Public Function FormatarNumeroPlanilha(ByVal pcNumero As Variant, _
+                                       Optional ByVal versao As Variant = 0) As String
+    Dim dig As String
+    Dim v As Long
+
+    If IsNull(pcNumero) Or pcNumero = "" Then
+        FormatarNumeroPlanilha = Null
+        Exit Function
+    End If
+
+    ' extrai só os dígitos do PC (ex.: "PC25072" -> "25072")
+    dig = ApenasDigitos(CStr(pcNumero))
+
+    ' garante 5 dígitos no número base
+    If Len(dig) > 5 Then dig = Right$(dig, 5)
+    dig = Right$("00000" & dig, 5)
+
+    ' versão em 2 dígitos
+    v = val(Nz(versao, 0))
+    FormatarNumeroPlanilha = dig & "-" & Format$(v, "00")
+End Function
+'=================================================================

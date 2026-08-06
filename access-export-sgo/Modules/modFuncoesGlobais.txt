@@ -1,0 +1,11 @@
+Option Compare Database
+
+Public Function GetDataRelatorio() As Date
+    On Error Resume Next
+    ' Usa a TempVar se existir, senão retorna a data atual
+    If Not IsNull(TempVars!DataRelatorio) Then
+        GetDataRelatorio = TempVars!DataRelatorio
+    Else
+        GetDataRelatorio = Date
+    End If
+End Function

@@ -1,0 +1,19 @@
+Option Compare Database
+Option Explicit
+
+Public Function GetTemp(ByVal tvName As String, Optional ByVal defaultValue As Variant = Null) As Variant
+    On Error Resume Next
+    If TempVars.Exists(tvName) Then
+        GetTemp = TempVars(tvName)
+    Else
+        GetTemp = defaultValue
+    End If
+End Function
+
+Public Function HasControl(frm As Form, ByVal ctlName As String) As Boolean
+    On Error Resume Next
+    Dim tmp As String
+    tmp = frm.Controls(ctlName).Name
+    HasControl = (Err.Number = 0)
+    Err.Clear
+End Function

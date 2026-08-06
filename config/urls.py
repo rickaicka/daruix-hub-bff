@@ -16,6 +16,7 @@ urlpatterns = [
         "api/memorando-remessas/",
         include("memorando_remessas.urls"),
     ),
+    path("api/budgeting/", include("budgeting.urls")),
 
     path(
         "api/schema/",

@@ -1,0 +1,125 @@
+Option Compare Database
+Option Explicit
+
+Private Const PASTA_EXPORT As String = "C:\OrdemDeCompraEmAberto"
+Private Const PASTA_RUNS As String = "C:\OrdemDeCompraEmAberto\runs"
+Private Const CAMINHO_BAT As String = "C:\Scripts\atualizaAppOC.bat"
+
+' horários fixos (diários)
+Private Const H1 As String = "11:00"
+Private Const H2 As String = "13:00"
+Private Const H3 As String = "17:30"
+
+'========================
+' PÚBLICAS (chamadas pelo F_Crypt)
+'========================
+
+' Executa 1x ao abrir (sempre)
+Public Sub ExportarEAtualizar_AoAbrir()
+    Call fncExportarConsultas
+End Sub
+
+' Verifica se já passou do horário e se ainda não executou hoje; se sim, executa
+Public Sub ExportarEAtualizar_SeHorario()
+    If DeveExecutarHorario(H1) Then Call fncExportarConsultas
+    If DeveExecutarHorario(H2) Then Call fncExportarConsultas
+    If DeveExecutarHorario(H3) Then Call fncExportarConsultas
+End Sub
+
+'========================
+' Núcleo
+'========================
+
+Public Function fncExportarConsultas() As Boolean
+    On Error GoTo TrataErro
+
+    GarantirPasta PASTA_EXPORT
+    GarantirPasta PASTA_RUNS
+
+'    ExportarQuery "cnsCabecalho"
+'    ExportarQuery "cnsFaturamento"
+'    ExportarQuery "cnsCobranca"
+'    ExportarQuery "cnsEntrega"
+'    ExportarQuery "cnsFornecedor"
+'    ExportarQuery "cnsObservacoes"
+'    ExportarQuery "cnsItensDaOC"
+'    ExportarQuery "cnsRodape"
+
+    ExportarQuery "cnsOrdemDeCompraEmAberto"
+
+    ' atualiza o app via FTP (bat)
+    ExecutarScriptAtualizacao
+
+    ' marca execução do(s) horário(s) que já venceram hoje
+    MarcarHorariosVencidosHoje
+
+    fncExportarConsultas = True
+    Exit Function
+
+TrataErro:
+    fncExportarConsultas = False
+End Function
+
+Private Sub ExportarQuery(ByVal nomeConsulta As String)
+    Dim arquivo As String
+    arquivo = PASTA_EXPORT & "\" & nomeConsulta & ".html"
+    DoCmd.OutputTo acOutputQuery, nomeConsulta, acFormatHTML, arquivo, False
+End Sub
+
+Private Sub GarantirPasta(ByVal pasta As String)
+    If Dir(pasta, vbDirectory) = "" Then MkDir pasta
+End Sub
+
+Private Sub ExecutarScriptAtualizacao()
+    If Dir(CAMINHO_BAT) <> "" Then
+        Shell "cmd.exe /c """ & CAMINHO_BAT & """", vbHide
+    End If
+End Sub
+
+'========================
+' Controle por horário (sem repetir no dia)
+'========================
+
+Private Function DeveExecutarHorario(ByVal hhmm As String) As Boolean
+    On Error GoTo Falha
+
+    ' só executa se já passou do horário e ainda não marcou hoje
+    If Now < DataHoraHoje(hhmm) Then
+        DeveExecutarHorario = False
+        Exit Function
+    End If
+
+    DeveExecutarHorario = (Dir(ArquivoMarca(hhmm)) = "")
+    Exit Function
+
+Falha:
+    ' na dúvida, não roda pelo scheduler (evita repetição)
+    DeveExecutarHorario = False
+End Function
+
+Private Sub MarcarHorariosVencidosHoje()
+    ' se já passou do horário, cria o marcador do dia (evita repetição)
+    If Now >= DataHoraHoje(H1) Then CriarMarca H1
+    If Now >= DataHoraHoje(H2) Then CriarMarca H2
+    If Now >= DataHoraHoje(H3) Then CriarMarca H3
+End Sub
+
+Private Sub CriarMarca(ByVal hhmm As String)
+    Dim arq As String
+    arq = ArquivoMarca(hhmm)
+    If Dir(arq) <> "" Then Exit Sub
+
+    Dim ff As Integer
+    ff = FreeFile
+    Open arq For Output As #ff
+    Print #ff, Format(Now, "yyyy-mm-dd hh:nn:ss")
+    Close #ff
+End Sub
+
+Private Function ArquivoMarca(ByVal hhmm As String) As String
+    ArquivoMarca = PASTA_RUNS & "\" & Format(Date, "yyyymmdd") & "_" & Replace(hhmm, ":", "") & ".run"
+End Function
+
+Private Function DataHoraHoje(ByVal hhmm As String) As Date
+    DataHoraHoje = DateSerial(Year(Date), Month(Date), Day(Date)) + TimeValue(hhmm)
+End Function

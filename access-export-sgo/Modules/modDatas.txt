@@ -1,0 +1,26 @@
+Option Compare Database
+Option Explicit
+
+Public Function AddDiasUteis(ByVal dataInicial As Date, ByVal qtd As Long) As Date
+    Dim d As Date
+    Dim i As Long
+    Dim wd As Integer
+
+    d = DateValue(dataInicial)
+    i = 0
+
+    Do While i < qtd
+        d = DateAdd("d", 1, d)
+        wd = Weekday(d, vbSunday) ' Domingo=1 ... Sábado=7
+
+        ' Só considera dias úteis (Seg=2 a Sex=6)
+        If wd >= 2 And wd <= 6 Then
+            ' Feriado só faz sentido nesses dias (2..6)
+            If DCount("*", "tblFeriado", "[data]=#" & Format(d, "yyyy\/mm\/dd") & "#") = 0 Then
+                i = i + 1
+            End If
+        End If
+    Loop
+
+    AddDiasUteis = d
+End Function

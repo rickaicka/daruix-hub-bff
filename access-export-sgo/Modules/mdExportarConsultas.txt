@@ -1,0 +1,56 @@
+Option Compare Database
+
+Public Function fncExportarConsultas_Antigo() As Boolean
+'EXPORTAR CONSULTA: CAMINHO DO ARQUIVO HTML A SER SALVO
+'NOME DO ARQUIVO
+strArquivo = "cnsCabecalho" & ".html"
+strArquivo2 = "cnsFaturamento" & ".html"
+strArquivo3 = "cnsCobranca" & ".html"
+strArquivo4 = "cnsEntrega" & ".html"
+strArquivo5 = "cnsFornecedor" & ".html"
+strArquivo6 = "cnsObservacoes" & ".html"
+strArquivo7 = "cnsItensDaOC" & ".html"
+strArquivo8 = "cnsRodape" & ".html"
+strArquivo9 = "cnsOrdemDeCompraEmAberto" & ".html"
+' CABECALHO
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsCabecalho", acFormatHTML, strLocal, False
+' FATURAMENTO
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo2
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsFaturamento", acFormatHTML, strLocal, False
+' COBRANCA
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo3
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsCobranca", acFormatHTML, strLocal, False
+' ENTREGA
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo4
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsEntrega", acFormatHTML, strLocal, False
+' FORNECEDOR
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo5
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsFornecedor", acFormatHTML, strLocal, False
+' OBSERVAÇÕES
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo6
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsObservacoes", acFormatHTML, strLocal, False
+' IENS DA OC
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo7
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsItensDaOC", acFormatHTML, strLocal, False
+' RODAPÉ
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo8
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsRodape", acFormatHTML, strLocal, False
+'TODAS(COMPLETO
+strLocal = "C:\OrdemDeCompraEmAberto" & "\" & strArquivo9
+'EXECUTAR O ARQUIVO
+DoCmd.OutputTo acOutputQuery, "cnsOrdemDeCompraEmAberto", acFormatHTML, strLocal, False
+
+
+
+
+
+End Function

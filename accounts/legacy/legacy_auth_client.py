@@ -2,6 +2,7 @@ import json
 import subprocess
 
 from django.conf import settings
+from integrations.legacy_bridge import LegacyBridgeClient, LegacyBridgeHttpError
 
 
 class LegacyAuthError(Exception):
@@ -20,6 +21,14 @@ class LegacyAuthClient:
     def authenticate(self, username, password):
         if not settings.LEGACY_AUTH_ENABLED:
             return None
+
+        if settings.LEGACY_BRIDGE_MODE == "http":
+            try:
+                payload = LegacyBridgeClient().authenticate(username, password)
+            except LegacyBridgeHttpError as error:
+                raise LegacyAuthError(str(error)) from error
+
+            return payload if payload.get("authenticated") else None
 
         if not settings.LEGACY_PYTHON_PATH:
             raise LegacyAuthError("LEGACY_PYTHON_PATH não configurado.")

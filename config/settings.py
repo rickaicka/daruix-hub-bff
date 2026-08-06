@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "django_filters",
     "accounts",
+    "budgeting",
     "memorando_remessas.apps.MemorandoRemessasConfig",
 ]
 
@@ -216,6 +217,38 @@ LEGACY_AUTH_ENABLED = config(
     cast=bool,
 )
 
+LEGACY_BRIDGE_MODE = config(
+    "LEGACY_BRIDGE_MODE",
+    default="subprocess",
+).strip().lower()
+
+if LEGACY_BRIDGE_MODE not in {"http", "subprocess"}:
+    raise ValueError(
+        "LEGACY_BRIDGE_MODE deve ser 'http' ou 'subprocess'."
+    )
+
+LEGACY_BRIDGE_URL = config(
+    "LEGACY_BRIDGE_URL",
+    default="",
+).strip()
+
+LEGACY_BRIDGE_TOKEN = config(
+    "LEGACY_BRIDGE_TOKEN",
+    default="",
+).strip()
+
+LEGACY_BRIDGE_CONNECT_TIMEOUT = config(
+    "LEGACY_BRIDGE_CONNECT_TIMEOUT",
+    default=3,
+    cast=int,
+)
+
+LEGACY_BRIDGE_READ_TIMEOUT = config(
+    "LEGACY_BRIDGE_READ_TIMEOUT",
+    default=15,
+    cast=int,
+)
+
 LEGACY_DB_PATH = config(
     "LEGACY_DB_PATH",
     default="",
@@ -348,3 +381,16 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ValueError(
         "EMAIL_USE_TLS e EMAIL_USE_SSL não podem estar ativos ao mesmo tempo."
     )
+
+LEGACY_BRIDGE_URL = config("LEGACY_BRIDGE_URL")
+LEGACY_BRIDGE_TOKEN = config("LEGACY_BRIDGE_TOKEN")
+LEGACY_BRIDGE_CONNECT_TIMEOUT = config(
+    "LEGACY_BRIDGE_CONNECT_TIMEOUT",
+    cast=float,
+    default=3,
+)
+LEGACY_BRIDGE_READ_TIMEOUT = config(
+    "LEGACY_BRIDGE_READ_TIMEOUT",
+    cast=float,
+    default=60,
+)

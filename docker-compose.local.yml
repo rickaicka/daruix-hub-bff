@@ -1,0 +1,19 @@
+services:
+  bff:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: daruix-hub-bff-local
+
+    env_file:
+      - .env.docker.local
+
+    ports:
+      - "8000:8000"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    command: >
+      python manage.py runserver 0.0.0.0:8000

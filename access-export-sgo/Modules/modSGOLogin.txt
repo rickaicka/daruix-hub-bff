@@ -1,0 +1,27 @@
+Option Compare Database
+Option Explicit
+
+Public Function SGO_UsuarioNome() As String
+    On Error GoTo Fim
+
+    If CurrentProject.AllForms("F_Crypt").IsLoaded Then
+        'Preferência: nome completo do SGO
+        SGO_UsuarioNome = Nz(Forms!F_Crypt!usuNomeCompleto, "")
+        If Len(SGO_UsuarioNome) = 0 Then SGO_UsuarioNome = Nz(Forms!F_Crypt!Nome_func, "")
+        If Len(SGO_UsuarioNome) = 0 Then SGO_UsuarioNome = Nz(Forms!F_Crypt!usuNome, "")
+    End If
+
+Fim:
+    If Len(SGO_UsuarioNome) = 0 Then SGO_UsuarioNome = "N/D"
+End Function
+
+Public Function SGO_UsuarioGrupo() As String
+    On Error GoTo Fim
+
+    If CurrentProject.AllForms("F_Crypt").IsLoaded Then
+        SGO_UsuarioGrupo = Nz(Forms!F_Crypt!usuGrupo, "")
+    End If
+
+Fim:
+    If Len(SGO_UsuarioGrupo) = 0 Then SGO_UsuarioGrupo = "N/D"
+End Function

@@ -1,0 +1,147 @@
+Option Compare Database
+Option Explicit
+
+' ===== modSGOButtons – Estilo e padronização de botões =====
+' Versão 1.1 – Revisada com função SGO_ParseMap
+
+' --- Paleta de cores (ajustar conforme necessidade) ---
+Private Const C_PRIMARY As Long = &HBD1F4   ' azul #4F81BD
+Private Const C_SECONDARY As Long = &HAAAAAA
+Private Const C_TEXT As Long = &HFFFFFF
+Private Const C_BG As Long = &HF5F5F5
+Private Const C_BORDER As Long = &HC8C8C8
+
+' ===== Helpers =====
+Private Sub SafeSet(obj As Object, ByVal PropName As String, ByVal PropValue As Variant)
+    On Error Resume Next
+    CallByName obj, PropName, VbLet, PropValue  ' ignora se a propriedade não existir
+End Sub
+
+Private Sub Place(ctrl As Control, ByVal Lcm As Double, ByVal Tcm As Double, _
+                  ByVal Wcm As Double, ByVal Hcm As Double)
+    On Error Resume Next
+    ctrl.Left = CmToTwips(Lcm)
+    ctrl.Top = CmToTwips(Tcm)
+    ctrl.Width = CmToTwips(Wcm)
+    ctrl.Height = CmToTwips(Hcm)
+End Sub
+
+Private Function CmToTwips(ByVal cm As Double) As Long
+    CmToTwips = cm * 567
+End Function
+
+' ===== Estilo principal para botões =====
+Private Sub StyleButtonByClass(c As Control, cls As String, Optional Compact As Boolean = False)
+    On Error Resume Next
+    With c
+        .FontName = "Segoe UI"
+        .FontSize = 10
+        .FontWeight = 700
+        .ForeColor = C_TEXT
+        .BackStyle = 1
+        .BorderStyle = 1
+        .BorderColor = C_BORDER
+        .TextAlign = 2
+        .Transparent = False
+        .UseTheme = False
+        
+        Select Case LCase(cls)
+            Case "primary"
+                .BackColor = C_PRIMARY
+            Case "secondary"
+                .BackColor = C_SECONDARY
+            Case Else
+                .BackColor = C_SECONDARY
+        End Select
+    End With
+End Sub
+
+' ===== Função de mapeamento =====
+Private Function SGO_ParseMap(ByVal s As String) As Object
+    Dim d As Object: Set d = CreateObject("Scripting.Dictionary")
+    Dim arr As Variant, Item As Variant, kv As Variant
+
+    If Len(Trim$(s)) = 0 Then
+        Set SGO_ParseMap = d
+        Exit Function
+    End If
+
+    arr = Split(s, ";")
+    For Each Item In arr
+        If InStr(1, Item, "=", vbTextCompare) > 0 Then
+            kv = Split(Item, "=")
+            d(Trim$(kv(0))) = Trim$(kv(1))
+        End If
+    Next Item
+
+    Set SGO_ParseMap = d
+End Function
+
+' ===== Aplica estilo em todos os botões do formulário =====
+Public Sub StyleButtonsOfForm(FormName As String, Optional ByVal Map As String = "", _
+                              Optional Compact As Boolean = False)
+    On Error GoTo EH
+
+    DoCmd.OpenForm FormName, acDesign
+    Dim frm As Form: Set frm = Forms(FormName)
+
+    ' Base visual
+    SafeSet frm, "FontName", "Segoe UI"
+    frm.Section(acDetail).BackColor = C_BG
+    If Compact Then
+        SafeSet frm, "Width", CmToTwips(7.6)
+        frm.Section(acDetail).Height = CmToTwips(4.4)
+    Else
+        SafeSet frm, "Width", CmToTwips(8.4)
+        frm.Section(acDetail).Height = CmToTwips(5.2)
+    End If
+
+    ' Mapeamento
+    Dim m As Object: Set m = SGO_ParseMap(Map)
+
+    ' Percorre controles
+    Dim c As Control, cls As String
+    For Each c In frm.Controls
+        If c.ControlType = acCommandButton Then
+            cls = ""
+            If m.Exists(c.Name) Then
+                cls = LCase(m(c.Name))
+            ElseIf Len(Trim$(c.Tag)) > 0 Then
+                cls = LCase(Trim$(c.Tag))
+            ElseIf LCase(c.Name) = "btnentrar" Then
+                cls = "primary"
+            ElseIf LCase(c.Name) = "btnsair" Then
+                cls = "secondary"
+            End If
+
+            If cls <> "" Then
+                StyleButtonByClass c, cls, (LCase(FormName) = "frmlogin" And Compact)
+            End If
+        End If
+    Next c
+
+    DoCmd.Close acForm, FormName, acSaveYes
+    Exit Sub
+
+EH:
+    MsgBox "Erro ao estilizar botões no formulário '" & FormName & "': " & _
+           Err.Number & " - " & Err.Description, vbCritical
+    On Error Resume Next
+    DoCmd.Close acForm, FormName, acSaveNo
+End Sub
+
+' ===== Atalhos para casos específicos =====
+Public Sub ApplyStyle_Login()
+    StyleButtonsOfForm "frmLogin", , True
+End Sub
+
+Public Sub FixLoginButtonsNow()
+    DoCmd.OpenForm "frmLogin", acDesign
+    With Forms("frmLogin")
+        .Controls("btnEntrar").BackColor = C_PRIMARY
+        .Controls("btnEntrar").ForeColor = C_TEXT
+        .Controls("btnSair").BackColor = C_SECONDARY
+        .Controls("btnSair").ForeColor = C_TEXT
+    End With
+    DoCmd.Close acForm, "frmLogin", acSaveYes
+End Sub

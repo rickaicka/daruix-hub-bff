@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from django.conf import settings
+from integrations.legacy_bridge import LegacyBridgeClient, LegacyBridgeHttpError
 
 
 class LegacyBridgeError(Exception):
@@ -118,6 +119,15 @@ def list_legacy_clients(
     search: str = "",
     limit: int = 100,
 ) -> list[dict]:
+    if settings.LEGACY_BRIDGE_MODE == "http":
+        try:
+            return LegacyBridgeClient().list_clients(
+                search=str(search or "").strip(),
+                limit=_normalize_limit(limit),
+            ) or []
+        except LegacyBridgeHttpError as error:
+            raise LegacyBridgeError(str(error)) from error
+
     arguments = [
         "list-clients",
         "--limit",
@@ -143,6 +153,17 @@ def list_legacy_works(
     search: str = "",
     limit: int = 100,
 ) -> list[dict]:
+    if settings.LEGACY_BRIDGE_MODE == "http":
+        try:
+            return LegacyBridgeClient().list_works(
+                client_name=str(client_name or "").strip(),
+                client_document=str(client_document or "").strip(),
+                search=str(search or "").strip(),
+                limit=_normalize_limit(limit),
+            ) or []
+        except LegacyBridgeHttpError as error:
+            raise LegacyBridgeError(str(error)) from error
+
     arguments = [
         "list-works",
         "--limit",
@@ -190,6 +211,12 @@ def get_legacy_work(
         raise LegacyBridgeError(
             "O ID legado da obra deve ser maior que zero."
         )
+
+    if settings.LEGACY_BRIDGE_MODE == "http":
+        try:
+            return LegacyBridgeClient().get_work(normalized_id)
+        except LegacyBridgeHttpError as error:
+            raise LegacyBridgeError(str(error)) from error
 
     return _run_bridge([
         "get-work",

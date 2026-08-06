@@ -1,0 +1,35 @@
+'==================== modSGO_Utils ====================
+Option Compare Database
+Option Explicit
+
+' Converte textos tipo "R$ 1.234,56" em número (Currency)
+Public Function SGO_ToCurrency(ByVal v As Variant) As Currency
+    If IsNull(v) Or v = "" Then
+        SGO_ToCurrency = 0
+        Exit Function
+    End If
+    If IsNumeric(v) Then
+        SGO_ToCurrency = CCur(v)
+        Exit Function
+    End If
+    Dim s As String
+    s = CStr(v)
+    s = Replace(s, "R$", "", , , vbTextCompare)
+    s = Replace(s, " ", "")
+    s = Replace(s, ".", "")     ' milhar
+    s = Replace(s, ",", ".")    ' decimal PT->EN
+    SGO_ToCurrency = CCur(val(s))
+End Function
+
+' Para usar dentro de DSum/DAvg etc. (domain aggregates)
+' Ex.: DSum("SGO_DomToCur([valor])", "T_Nota Fiscal", "codreq=123")
+Public Function SGO_DomToCur(ByVal v As Variant) As Double
+    SGO_DomToCur = CDbl(SGO_ToCurrency(v))
+End Function
+'======================================================
+Public Sub SGO_ShowSaldoDialog(ByVal saldo As Currency, Optional ByVal extraMsg As String = "")
+    Dim args As String
+    args = CStr(saldo) & "|" & Nz(extraMsg, "")
+    ' acDialog força comportamento modal mesmo sem a propriedade "Modal"
+    DoCmd.OpenForm "frmDlgSaldoOC", WindowMode:=acDialog, OpenArgs:=args
+End Sub

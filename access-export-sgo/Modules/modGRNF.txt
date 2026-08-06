@@ -1,0 +1,53 @@
+Option Compare Database
+
+Public Function UsuarioAtual() As String
+    UsuarioAtual = Environ$("Username")
+End Function
+Public Sub RegistrarHistoricoGRNF( _
+    ByVal pGrnfNumID As Long, _
+    ByVal pGrnfDoPC As Long, _
+    ByVal pGrnfPC As String, _
+    ByVal pCodigoNF As Long, _
+    ByVal pNumNF As String, _
+    ByVal pValorNF As Currency, _
+    ByVal pAcao As String)
+
+    Dim sql As String
+    
+    sql = "INSERT INTO tblHistoricoDoItemDaGRNF (" & _
+          "grnfNumID, grnfDoPC, grnfPC, codigoNF, numnf, valorNF, acao, usuario, dataHora) " & _
+          "VALUES (" & _
+          pGrnfNumID & ", " & _
+          pGrnfDoPC & ", '" & pGrnfPC & "', " & _
+          pCodigoNF & ", '" & pNumNF & "', " & _
+          Replace(CStr(pValorNF), ",", ".") & ", '" & _
+          pAcao & "', CurrentUser(), Now())"
+    
+    CurrentDb.Execute sql, dbFailOnError
+
+End Sub
+Public Sub RecalcularValorGRNF(ByVal pGrnfDoPC As Long)
+
+    Dim Total As Currency
+
+    Total = Nz(DSum("valor", "[T_Nota Fiscal]", _
+        "grnfnumero=" & pGrnfDoPC & _
+        " AND Nz(somaacumulado,False)=True" & _
+        " AND Nz(retirasomaacumulada,False)=False"), 0)
+    
+    Dim db As DAO.Database
+    Dim sqlUpdate As String
+
+Set db = CurrentDb
+
+sqlUpdate = "UPDATE T_GRNF SET grnfValor=" & Replace(CStr(Total), ",", ".") & _
+            " WHERE grnfDoPC=" & pGrnfDoPC
+
+db.Execute sqlUpdate, dbFailOnError
+
+MsgBox "Total: " & Total & vbCrLf & _
+       "Registros atualizados: " & db.RecordsAffected, vbInformation
+
+    
+
+End Sub

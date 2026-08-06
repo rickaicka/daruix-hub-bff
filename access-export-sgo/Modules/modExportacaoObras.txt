@@ -1,0 +1,83 @@
+Option Compare Database
+Option Explicit
+
+Private Const PASTA_EXPORT_LOCAL As String = "C:\OrdemDeCompraEmAberto"
+Private Const PASTA_EXPORT_OBRAS As String = "Q:"
+Private Const PASTA_RUNS_OBRAS As String = "C:\OrdemDeCompraEmAberto\runs"
+
+Public Sub ExportarObrasEmAndamento_SeNecessario()
+    If Not DeveExportarObrasHoje Then Exit Sub
+    Call ExportarObrasEmAndamento
+End Sub
+
+Public Sub ExportarObrasEmAndamento()
+    On Error GoTo TrataErro
+
+    Dim arquivoLocal As String
+    Dim arquivoRede As String
+    Dim rs As DAO.Recordset
+    Dim ff As Integer
+
+    GarantirPastaLocal PASTA_EXPORT_LOCAL
+    GarantirPastaLocal PASTA_RUNS_OBRAS
+
+    arquivoLocal = PASTA_EXPORT_LOCAL & "\obras_em_andamento.csv"
+    arquivoRede = PASTA_EXPORT_OBRAS & "\obras_em_andamento.csv"
+
+    On Error Resume Next
+    If Dir(arquivoLocal) <> "" Then Kill arquivoLocal
+    If Dir(arquivoRede) <> "" Then Kill arquivoRede
+    On Error GoTo TrataErro
+
+    Set rs = CurrentDb.OpenRecordset("cnsObrasEmAndamento", dbOpenSnapshot)
+
+    ff = FreeFile
+    Open arquivoLocal For Output As #ff
+
+    Print #ff, "pc"
+
+    Do While Not rs.EOF
+        Print #ff, Nz(rs!PC, "")
+        rs.MoveNext
+    Loop
+
+    Close #ff
+    Set rs = Nothing
+
+    ' só tenta copiar se a pasta de rede existir
+    If Dir(PASTA_EXPORT_OBRAS, vbDirectory) <> "" Then
+        FileCopy arquivoLocal, arquivoRede
+    End If
+
+    CriarMarcaObrasHoje
+    Exit Sub
+
+TrataErro:
+    On Error Resume Next
+    If ff > 0 Then Close #ff
+    Set rs = Nothing
+    MsgBox Err.Number & " - " & Err.Description, vbExclamation, "Erro ao exportar obras em andamento"
+End Sub
+
+Private Function DeveExportarObrasHoje() As Boolean
+    DeveExportarObrasHoje = (Dir(ArquivoMarcaObrasHoje) = "")
+End Function
+
+Private Sub CriarMarcaObrasHoje()
+    Dim ff As Integer
+
+    If Dir(ArquivoMarcaObrasHoje) <> "" Then Exit Sub
+
+    ff = FreeFile
+    Open ArquivoMarcaObrasHoje For Output As #ff
+    Print #ff, Format(Now, "yyyy-mm-dd hh:nn:ss")
+    Close #ff
+End Sub
+
+Private Function ArquivoMarcaObrasHoje() As String
+    ArquivoMarcaObrasHoje = PASTA_RUNS_OBRAS & "\obras_" & Format(Date, "yyyymmdd") & ".run"
+End Function
+
+Private Sub GarantirPastaLocal(ByVal pasta As String)
+    If Dir(pasta, vbDirectory) = "" Then MkDir pasta
+End Sub

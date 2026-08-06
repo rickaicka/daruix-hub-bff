@@ -1,0 +1,131 @@
+'==============================================================
+' modMenuPrincipal_UI — efeitos de hover/pressed SEM alterar paleta
+' v2025-09-26 BRT
+'==============================================================
+Option Compare Database
+Option Explicit
+
+' Intensidades do efeito
+Private Const HOVER_PCT As Single = 0.1   ' clareia 10% ao passar o mouse
+Private Const PRESS_PCT As Single = 0.15  ' escurece 15% ao clicar
+
+' ---------- Utilidades ----------
+Private Function NzStr(v) As String
+    If IsNull(v) Then NzStr = "" Else NzStr = CStr(v)
+End Function
+
+' ---------- Helpers de cor (compatíveis) ----------
+Private Function GetR(ByVal c As Long) As Long
+    GetR = (c And &HFF&)
+End Function
+
+Private Function GetG(ByVal c As Long) As Long
+    GetG = (c And &HFF00&) \ &H100&
+End Function
+
+Private Function GetB(ByVal c As Long) As Long
+    GetB = (c And &HFF0000) \ &H10000
+End Function
+
+Private Function LightenColor(ByVal c As Long, ByVal pct As Single) As Long
+    Dim r As Long, g As Long, b As Long
+    r = CLng(GetR(c) + (255 - GetR(c)) * pct)
+    g = CLng(GetG(c) + (255 - GetG(c)) * pct)
+    b = CLng(GetB(c) + (255 - GetB(c)) * pct)
+    LightenColor = RGB(r, g, b)
+End Function
+
+Private Function DarkenColor(ByVal c As Long, ByVal pct As Single) As Long
+    Dim r As Long, g As Long, b As Long
+    r = CLng(GetR(c) * (1 - pct))
+    g = CLng(GetG(c) * (1 - pct))
+    b = CLng(GetB(c) * (1 - pct))
+    DarkenColor = RGB(r, g, b)
+End Function
+
+' ---------- Armazenar/Restaurar cores originais (no Tag) ----------
+Private Sub RememberBaseColors(btn As Access.CommandButton)
+    On Error Resume Next
+    If InStr(1, btn.Tag & "", "_uiBG=", vbTextCompare) = 0 Then
+        btn.Tag = IIf(Len(btn.Tag & "") > 0, btn.Tag & ";", "") & _
+                  "_uiBG=" & btn.BackColor & ";_uiFG=" & btn.ForeColor & ";_uiBD=" & btn.BorderColor
+    End If
+End Sub
+
+Private Function GetTagColor(btn As Access.CommandButton, key$) As Long
+    Dim t$, p&, q&, v$
+    t = btn.Tag & "": p = InStr(1, t, key & "=", vbTextCompare)
+    If p > 0 Then
+        q = InStr(p, t, ";")
+        v = Mid$(t, p + Len(key) + 1, IIf(q = 0, Len(t) + 1, q) - (p + Len(key) + 1))
+        If IsNumeric(v) Then GetTagColor = CLng(v)
+    End If
+End Function
+
+Private Sub ResetOne(btn As Access.CommandButton)
+    On Error Resume Next
+    Dim bg&, fg&, bd&
+    bg = GetTagColor(btn, "_uiBG"): If bg <> 0 Then btn.BackColor = bg
+    fg = GetTagColor(btn, "_uiFG"): If fg <> 0 Then btn.ForeColor = fg
+    bd = GetTagColor(btn, "_uiBD"): If bd <> 0 Then btn.BorderColor = bd
+End Sub
+
+' ---------- Efeitos (eventos) ----------
+Public Function UI_MenuBtnHover() As Boolean
+    On Error Resume Next
+    Dim btn As Access.CommandButton: Set btn = Screen.ActiveControl
+    If InStr(1, LCase$(btn.Tag & ""), "nohover") > 0 Then Exit Function
+    RememberBaseColors btn
+    btn.BackColor = LightenColor(GetTagColor(btn, "_uiBG"), HOVER_PCT)
+    btn.BorderColor = LightenColor(GetTagColor(btn, "_uiBD"), HOVER_PCT)
+    UI_MenuBtnHover = True
+End Function
+
+Public Function UI_MenuBtnDown() As Boolean
+    On Error Resume Next
+    Dim btn As Access.CommandButton: Set btn = Screen.ActiveControl
+    If InStr(1, LCase$(btn.Tag & ""), "nohover") > 0 Then Exit Function
+    RememberBaseColors btn
+    btn.BackColor = DarkenColor(GetTagColor(btn, "_uiBG"), PRESS_PCT)
+    btn.BorderColor = DarkenColor(GetTagColor(btn, "_uiBD"), PRESS_PCT)
+    UI_MenuBtnDown = True
+End Function
+
+Public Function UI_MenuBtnUp() As Boolean
+    On Error Resume Next
+    Dim btn As Access.CommandButton: Set btn = Screen.ActiveControl
+    If InStr(1, LCase$(btn.Tag & ""), "nohover") > 0 Then Exit Function
+    btn.BackColor = LightenColor(GetTagColor(btn, "_uiBG"), HOVER_PCT)
+    btn.BorderColor = LightenColor(GetTagColor(btn, "_uiBD"), HOVER_PCT)
+    UI_MenuBtnUp = True
+End Function
+
+Public Function UI_MenuAreaMouseMove() As Boolean
+    On Error Resume Next
+    Dim f As Form: Set f = Screen.ActiveForm
+    Dim c As Control
+    For Each c In f.Controls
+        If TypeOf c Is Access.CommandButton Then
+            If InStr(1, LCase$(c.Tag & ""), "nohover") = 0 Then ResetOne c
+        End If
+    Next c
+    UI_MenuAreaMouseMove = True
+End Function
+
+' ---------- Conectar eventos (sem alterar estilos) ----------
+Public Sub AttachMenuButtonEffectsOnly(frm As Form)
+    On Error Resume Next
+    Dim c As Control
+    For Each c In frm.Controls
+        If TypeOf c Is Access.CommandButton Then
+            If InStr(1, LCase$(c.Tag & ""), "nohover") = 0 Then
+                c.OnMouseMove = "=UI_MenuBtnHover()"
+                c.OnMouseDown = "=UI_MenuBtnDown()"
+                c.OnMouseUp = "=UI_MenuBtnUp()"
+                RememberBaseColors c
+            End If
+        End If
+    Next c
+    frm.OnMouseMove = "=UI_MenuAreaMouseMove()"
+End Sub
+'==============================================================

@@ -1,0 +1,42 @@
+Option Compare Database
+
+Public Sub ExportarRM()
+
+    Dim rs As DAO.Recordset
+    Dim f As Integer
+    Dim linha As String
+    Dim i As Integer
+    Dim valor As Variant
+
+    Set rs = CurrentDb.OpenRecordset("cnsRM")
+    
+    f = FreeFile
+    Open "C:\tmp\rm_export.txt" For Output As #f
+
+    Do While Not rs.EOF
+
+        linha = ""
+
+        For i = 0 To rs.Fields.Count - 1
+            
+            valor = rs.Fields(i).Value
+            
+            If IsNull(valor) Then
+                linha = linha & ";"
+            Else
+                linha = linha & """" & Replace(valor, """", "") & """" & ";"
+            End If
+            
+        Next i
+
+        Print #f, linha
+
+        rs.MoveNext
+    Loop
+
+    Close #f
+    rs.Close
+
+    MsgBox "Exportação concluída!"
+
+End Sub

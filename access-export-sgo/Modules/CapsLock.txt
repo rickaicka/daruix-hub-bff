@@ -1,0 +1,5 @@
+Option Compare Database
+
+Function EstadoCapsLock() As Boolean
+    EstadoCapsLock =
+End Function

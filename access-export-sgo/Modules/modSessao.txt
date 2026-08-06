@@ -1,0 +1,20 @@
+'======================================MODSESSÃO======================================================
+Option Compare Database
+Option Explicit
+
+Private gUsuarioNome As String
+Private gUsuarioID As Long
+
+Public Sub SetUsuarioAtual(ByVal usr As String, ByVal idUsr As Long)
+    gUsuarioNome = Nz(usr, vbNullString)
+    gUsuarioID = Nz(idUsr, 0)
+End Sub
+
+Public Function GetUsuarioAtualNome() As String
+    GetUsuarioAtualNome = Nz(gUsuarioNome, vbNullString)
+End Function
+
+Public Function GetUsuarioAtualID() As Long
+    GetUsuarioAtualID = Nz(gUsuarioID, 0)
+End Function
+'================================================FIM=================================================

@@ -1,0 +1,322 @@
+'==============================================================
+' modUIWeb  —  Visual "Web" para formulários (genérico + menu)
+' v2025-09-26 BRT
+'==============================================================
+Option Compare Database
+Option Explicit
+
+' Toggle global (liga/desliga tema sem editar forms)
+Public Const WEB_UI_ENABLED As Boolean = True
+
+' Paleta base
+Private Const C_BG& = &HF4F5F7               ' fundo (#EDEBF7 aprox. invertido)
+Private Const C_CARD& = &HFFFFFF             ' cards/branco
+Private Const C_BORDER& = &HD4D7DB           ' borda suave
+Private Const C_TEXT& = &H232323             ' texto padrão
+Private Const C_MUTED& = &H6B6E73            ' texto secundário
+Private Const C_ACCENT& = &HBE6F1A           ' destaque
+Private Const C_LINK& = &HC04020             ' links
+
+Private Const FONT_NAME$ = "Segoe UI"
+Private Const FSZ_BASE! = 9!
+Private Const FSZ_LABEL! = 10!
+Private Const FSZ_TITLE! = 16!
+Private Const FSZ_SECTION! = 11!
+
+' Respeitar controles crus (não estilizar) se Tag contiver "raw"
+Public Const WEB_UI_RESPECT_TAG_RAW As Boolean = True
+
+'=================== APLICAÇÃO GENÉRICA ==================='
+' Use no Form_Load:  modUIWeb.ApplyWebUI Me, "TÍTULO (opcional)"
+Public Sub ApplyWebUI(ByVal f As Form, Optional ByVal titulo As String = "")
+    On Error Resume Next
+    If Not WEB_UI_ENABLED Then Exit Sub
+    If f Is Nothing Then Exit Sub
+
+    '— Container —
+    f.RecordSelectors = False
+    f.NavigationButtons = False
+    f.DividingLines = False
+    f.AutoCenter = True
+    f.AutoResize = True
+    f.BorderStyle = 1           ' Thin
+    f.Cycle = 2                 ' Current record
+    f.ScrollBars = 2            ' Vertical only
+    f.AlternateBackColor = &HF7F7F7
+    f.Section(acDetail).BackColor = C_BG
+    If Len(titulo) > 0 Then f.Caption = titulo
+
+    '— Título (lbl/txt ou Tag="title") —
+    StyleTitleIfExists f, titulo
+
+    '— Controles —
+    Dim ctl As Control, tg$
+    For Each ctl In f.Controls
+        tg$ = LCase$(ctl.Tag & "")
+
+        ' Blindagem: nunca tocar em botões; respeitar Tag="raw"
+        If ctl.ControlType = acCommandButton Then GoTo NextCtl
+        If WEB_UI_RESPECT_TAG_RAW And InStr(tg$, "raw") > 0 Then GoTo NextCtl
+
+        Select Case ctl.ControlType
+            Case acTextBox, acComboBox
+                ctl.FontName = FONT_NAME
+                ctl.FontSize = FSZ_BASE
+                ctl.ForeColor = C_TEXT
+                ctl.BackColor = &HFFFFFF
+                ctl.SpecialEffect = 0      ' Flat
+                ctl.BorderStyle = 1        ' Solid
+                ctl.BorderColor = &HD0D0D0
+                If IsReadOnlyLook(ctl) Then
+                    ctl.Enabled = False
+                    ctl.Locked = True
+                    ctl.BackColor = &HF0F0F0
+                End If
+
+            Case acLabel
+                ctl.FontName = FONT_NAME
+                ctl.FontSize = FSZ_LABEL
+                ctl.ForeColor = C_TEXT
+                ctl.FontBold = True
+                ctl.BackStyle = 0
+                Select Case tg$
+                    Case "title":   ctl.FontSize = FSZ_TITLE
+                    Case "section": ctl.FontSize = FSZ_SECTION
+                End Select
+                If HasHyperOrClick(ctl) Or tg$ = "link" Then
+                    ctl.ForeColor = C_LINK
+                    ctl.FontUnderline = True
+                End If
+
+            Case acRectangle
+                ' Só estiliza retângulos marcados explicitamente como "card"
+                If tg$ = "card" Then
+                    StyleCard ctl
+                End If
+
+            Case acTabCtl
+                ctl.BackStyle = 1
+                ctl.BackColor = &HEFEFEF
+                ctl.BorderColor = C_BORDER
+
+            Case acSubform
+                If Not ctl.Form Is Nothing Then ApplyWebUI ctl.Form
+        End Select
+
+        ' Destaque automático para “total”
+        If LCase$(ctl.Name) Like "*total*" Then
+            On Error Resume Next
+            ctl.FontBold = True
+            ctl.ForeColor = &H6633
+        End If
+
+NextCtl:
+    Next ctl
+
+    f.Repaint   ' útil se aplicado em runtime
+End Sub
+
+'=================== MENU: ESTILO RÁPIDO ==================='
+' Use no Form_Load do frmMenuPrincipal: modUIWeb.ApplyWebMenuUI Me, "MENU PRINCIPAL"
+Public Sub ApplyWebMenuUI(frm As Form, Optional titulo$ = "")
+    On Error Resume Next
+    If Not WEB_UI_ENABLED Then Exit Sub
+    If frm Is Nothing Then Exit Sub
+
+    frm.BackColor = C_BG
+    frm.RecordSelectors = False
+    frm.NavigationButtons = False
+    frm.DividingLines = False
+    frm.ScrollBars = 0
+    frm.BorderStyle = 0
+
+    ' Título
+    StyleTitleIfExists frm, titulo
+
+    ' Varre e aplica (pulando botões e respeitando raw)
+    Dim ctl As Control, tg$
+    For Each ctl In frm.Controls
+        tg$ = LCase$(ctl.Tag & "")
+        If ctl.ControlType = acCommandButton Then GoTo NextCtl
+        If WEB_UI_RESPECT_TAG_RAW And InStr(tg$, "raw") > 0 Then GoTo NextCtl
+
+        Select Case ctl.ControlType
+            Case acLabel:         StyleLabel ctl
+            Case acRectangle:     If tg$ = "card" Then StyleCard ctl
+            Case acTextBox:       StyleTextbox ctl
+            Case acComboBox:      StyleCombo ctl
+            Case acListBox:       StyleList ctl
+            Case acSubform
+                If Not ctl.Form Is Nothing Then ApplyWebUI ctl.Form
+        End Select
+NextCtl:
+    Next ctl
+
+    frm.Repaint
+End Sub
+
+'==================== STYLES HELPERS ===================='
+Private Sub StyleTitleIfExists(frm As Form, titulo$)
+    On Error Resume Next
+
+    Dim cand As Control, nm
+    Set cand = Nothing
+
+    ' 1) Nomes comuns
+    For Each nm In Array("lblTitulo", "lblTitle", "txtTitulo", "txtTitle")
+        Set cand = GetCtlIfExists(frm, CStr(nm))
+        If Not (cand Is Nothing) Then Exit For
+    Next nm
+
+    ' 2) Tag contém "title"
+    If cand Is Nothing Then
+        Dim c As Control
+        For Each c In frm.Controls
+            If InStr(1, LCase$(c.Tag & ""), "title") > 0 Then
+                Set cand = c
+                Exit For
+            End If
+        Next c
+    End If
+
+    If cand Is Nothing Then Exit Sub
+    If Len(titulo$) = 0 Then Exit Sub
+
+    ' 3) Define o texto
+    Select Case cand.ControlType
+        Case acLabel
+            cand.Caption = titulo$
+        Case acTextBox
+            cand.ControlSource = "=""" & Replace(titulo$, """", """""") & """"
+    End Select
+
+    ' 4) Estilo
+    cand.FontName = FONT_NAME
+    cand.FontSize = FSZ_TITLE
+    cand.FontBold = True
+    cand.ForeColor = C_TEXT
+    cand.BackStyle = 0
+End Sub
+
+Private Sub StyleLabel(LBL As Control)
+    On Error Resume Next
+    LBL.FontName = FONT_NAME
+    LBL.FontSize = FSZ_LABEL
+    LBL.ForeColor = C_TEXT
+    LBL.BackStyle = 0
+    If HasHyperOrClick(LBL) Or LCase$(LBL.Tag & "") = "link" Then
+        LBL.ForeColor = C_LINK
+        LBL.FontUnderline = True
+    End If
+    Select Case LCase$(LBL.Tag & "")
+        Case "title":   LBL.FontSize = FSZ_TITLE:   LBL.FontBold = True
+        Case "section": LBL.FontSize = FSZ_SECTION: LBL.FontBold = True
+    End Select
+End Sub
+
+Private Sub StyleCard(r As Control)
+    On Error Resume Next
+    r.BackStyle = 1
+    r.BackColor = C_CARD
+    r.BorderStyle = 1
+    r.BorderColor = C_BORDER
+    r.BorderWidth = 1
+    r.SpecialEffect = 0
+End Sub
+
+Private Sub StyleTextbox(tb As Control)
+    On Error Resume Next
+    tb.FontName = FONT_NAME
+    tb.FontSize = FSZ_BASE
+    tb.ForeColor = C_TEXT
+    tb.BorderColor = C_BORDER
+    tb.BorderWidth = 1
+    tb.BackColor = &HFEFEFE
+End Sub
+
+Private Sub StyleList(lst As Control)
+    On Error Resume Next
+    lst.FontName = FONT_NAME
+    lst.FontSize = FSZ_BASE
+    lst.ForeColor = C_TEXT
+    lst.BorderColor = C_BORDER
+    lst.BorderWidth = 1
+    lst.BackColor = &HFFFFFF
+End Sub
+
+Private Sub StyleCombo(cbo As Control)
+    On Error Resume Next
+    cbo.FontName = FONT_NAME
+    cbo.FontSize = FSZ_BASE
+    cbo.ForeColor = C_TEXT
+    cbo.BorderColor = C_BORDER
+    cbo.BorderWidth = 1
+    cbo.BackColor = &HFFFFFF
+End Sub
+
+'==================== UTILITÁRIOS ===================='
+Private Function GetCtlIfExists(frm As Form, nm$) As Control
+    On Error Resume Next
+    Set GetCtlIfExists = frm.Controls(nm)
+End Function
+
+Private Function HasHyperOrClick(c As Control) As Boolean
+    On Error Resume Next
+    HasHyperOrClick = (Len(c.HyperlinkAddress & "") > 0) Or _
+                      (InStr(1, c.OnClick & "", "[Event Procedure]", vbTextCompare) > 0)
+End Function
+
+Private Function IsReadOnlyLook(ByVal ctl As Control) As Boolean
+    On Error Resume Next
+    Dim nm As String: nm = LCase$(ctl.Name)
+    If (nm Like "*total*" Or nm Like "*saldo*" Or nm Like "*resultado*") Then
+        IsReadOnlyLook = True: Exit Function
+    End If
+    If ctl.Locked = True Then IsReadOnlyLook = True
+End Function
+'=================== RODAPÉ (apenas TextBox) ==================='
+' Aplica cor do rodapé e estiliza SOMENTE as TextBox do rodapé.
+' Qualquer controle com Tag contendo "raw" é ignorado.
+Public Sub ApplyFooterUI(frm As Form, _
+                         Optional footerBg As Long = -1, _
+                         Optional tbBack As Long = -1, _
+                         Optional tbFore As Long = -1, _
+                         Optional tbBorder As Long = -1)
+
+    On Error Resume Next
+    If frm Is Nothing Then Exit Sub
+
+    ' Defaults (tons sugeridos p/ #E8EBED):
+    If footerBg = -1 Then footerBg = RGB(200, 202, 204)   ' #C8CACC (fundo do rodapé)
+    If tbBack = -1 Then tbBack = RGB(218, 221, 223)       ' #DADDDF (fundo das TextBox)
+    If tbFore = -1 Then tbFore = RGB(35, 35, 35)          ' #232323 (texto)
+    If tbBorder = -1 Then tbBorder = RGB(176, 179, 180)   ' #B0B3B4 (borda)
+
+    ' Fundo do rodapé
+    frm.Section(acFooter).BackColor = footerBg
+
+    ' Só as TextBox do rodapé
+    Dim ctl As Control, tg$
+    For Each ctl In frm.Controls
+        tg$ = LCase$(ctl.Tag & "")
+        If ctl.Section = acFooter Then
+            If ctl.ControlType = acTextBox Then
+                If Not (WEB_UI_RESPECT_TAG_RAW And InStr(tg$, "raw") > 0) Then
+                    ctl.UseTheme = False
+                    ctl.FontName = "Segoe UI"
+                    ctl.FontSize = 8
+                    ctl.ForeColor = tbFore
+                    ctl.BackStyle = 1
+                    ctl.BackColor = tbBack
+                    ctl.BorderStyle = 1
+                    ctl.BorderColor = tbBorder
+                    ctl.BorderWidth = 1
+                    ' (opcional) alinhamento: 1=Esq, 2=Centro, 3=Dir
+                    ' ctl.TextAlign = 2
+                End If
+            End If
+        End If
+    Next ctl
+End Sub
+
+'==============================================================

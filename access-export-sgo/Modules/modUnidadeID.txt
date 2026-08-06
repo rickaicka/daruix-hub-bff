@@ -1,0 +1,51 @@
+Option Compare Database
+Option Explicit
+
+' Preenche unidadeID em tblInsumos usando a sigla (unidadeSigla) de tblUnidadeDeMedida
+Public Sub PreencherUnidadeID_Simples()
+    On Error GoTo trata_erro
+
+    Dim rs As DAO.Recordset
+    Dim sig As String
+    Dim uid As Variant
+    Dim nAtual As Long, nSem As Long
+
+    Set rs = CurrentDb.OpenRecordset( _
+        "SELECT insumoID, insumoUnidade, unidadeID " & _
+        "FROM tblInsumos " & _
+        "WHERE Nz(unidadeID,0)=0 AND Nz(insumoUnidade,'')<>''", dbOpenDynaset)
+
+    Do While Not rs.EOF
+        sig = Trim$(Nz(rs!insumoUnidade, ""))
+        If Len(sig) > 0 Then
+            uid = DLookup("unidadeID", "tblUnidadeDeMedida", _
+                          "UCase(Trim([unidadeSigla]))=UCase(Trim('" & Replace(sig, "'", "''") & "'))")
+            If Not IsNull(uid) Then
+                rs.Edit
+                rs!unidadeID = uid
+                rs.Update
+                nAtual = nAtual + 1
+            Else
+                nSem = nSem + 1
+            End If
+        Else
+            nSem = nSem + 1
+        End If
+        rs.MoveNext
+    Loop
+
+    rs.Close: Set rs = Nothing
+    MsgBox "UnidadeID preenchido." & vbCrLf & _
+           "Atualizados: " & nAtual & vbCrLf & _
+           "Sem correspondência: " & nSem, vbInformation
+    Exit Sub
+
+trata_erro:
+    MsgBox "Erro: " & Err.Number & " - " & Err.Description, vbExclamation
+End Sub
+
+' (opcional) para executar via Macro RunCode
+Public Function RunPreencherUnidadeID() As Boolean
+    PreencherUnidadeID_Simples
+    RunPreencherUnidadeID = True
+End Function
