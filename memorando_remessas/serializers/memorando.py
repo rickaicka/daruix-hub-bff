@@ -17,9 +17,7 @@ from memorando_remessas.services import (
 )
 
 
-class ShipmentMemoResponsibleSerializer(
-    serializers.ModelSerializer
-):
+class ShipmentMemoResponsibleSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(
         source="user.id",
         read_only=True,
@@ -56,17 +54,13 @@ class ShipmentMemoResponsibleSerializer(
         read_only_fields = fields
 
 
-class ShipmentMemoListSerializer(
-    serializers.ModelSerializer
-):
+class ShipmentMemoListSerializer(serializers.ModelSerializer):
     status_label = serializers.CharField(
         source="get_status_display",
         read_only=True,
     )
 
-    primary_responsible_name = (
-        serializers.SerializerMethodField()
-    )
+    primary_responsible_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ShipmentMemo
@@ -93,20 +87,15 @@ class ShipmentMemoListSerializer(
     def get_primary_responsible_name(
         self,
         obj,
-    ):
+    ) -> str | None:
         for responsible in obj.responsible_links.all():
             if responsible.is_primary:
-                return (
-                    responsible.user.name
-                    or responsible.user.username
-                )
+                return responsible.user.name or responsible.user.username
 
         return None
 
 
-class ShipmentMemoSerializer(
-    serializers.ModelSerializer
-):
+class ShipmentMemoSerializer(serializers.ModelSerializer):
     legacy_work_id = serializers.IntegerField(
         min_value=1,
         required=True,
@@ -150,12 +139,10 @@ class ShipmentMemoSerializer(
         read_only=True,
     )
 
-    responsible_users = (
-        ShipmentMemoResponsibleSerializer(
-            source="responsible_links",
-            many=True,
-            read_only=True,
-        )
+    responsible_users = ShipmentMemoResponsibleSerializer(
+        source="responsible_links",
+        many=True,
+        read_only=True,
     )
 
     selected_options = ShipmentMemoOptionSerializer(
@@ -294,15 +281,11 @@ class ShipmentMemoSerializer(
         )
 
 
-class ShipmentMemoSendSerializer(
-    serializers.Serializer
-):
+class ShipmentMemoSendSerializer(serializers.Serializer):
     pass
 
 
-class ShipmentMemoCancelSerializer(
-    serializers.Serializer
-):
+class ShipmentMemoCancelSerializer(serializers.Serializer):
     reason = serializers.CharField(
         required=True,
         allow_blank=False,
@@ -311,15 +294,11 @@ class ShipmentMemoCancelSerializer(
     )
 
 
-class ShipmentMemoRevisionSerializer(
-    serializers.Serializer
-):
+class ShipmentMemoRevisionSerializer(serializers.Serializer):
     pass
 
 
-class ShipmentMemoHistorySerializer(
-    serializers.ModelSerializer
-):
+class ShipmentMemoHistorySerializer(serializers.ModelSerializer):
     action_label = serializers.CharField(
         source="get_action_display",
         read_only=True,

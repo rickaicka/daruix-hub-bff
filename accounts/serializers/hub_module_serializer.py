@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from accounts.models import HubMenuItem, HubModule
@@ -19,8 +20,7 @@ def _get_context_user(context):
 
 def _get_visible_children(menu_item, user):
     queryset = (
-        menu_item.children
-        .filter(is_active=True)
+        menu_item.children.filter(is_active=True)
         .select_related("module")
         .prefetch_related("permissions")
         .order_by("order", "name")
@@ -61,14 +61,14 @@ class HubMenuItemSerializer(serializers.ModelSerializer):
             "children",
         ]
 
-    def get_permissao(self, obj):
+    def get_permissao(self, obj) -> list[str]:
         return sorted(
             permission.code
             for permission in obj.permissions.all()
             if permission.is_active
         )
 
-    def get_favorito(self, obj):
+    def get_favorito(self, obj) -> bool:
         annotated_value = getattr(obj, "favorito", None)
 
         if annotated_value is not None:
@@ -81,6 +81,7 @@ class HubMenuItemSerializer(serializers.ModelSerializer):
 
         return obj.user_favorites.filter(user=user).exists()
 
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_children(self, obj):
         user = _get_context_user(self.context)
         children = _get_visible_children(obj, user)
@@ -118,11 +119,11 @@ class HubModuleSerializer(serializers.ModelSerializer):
             "remote",
         ]
 
+    @extend_schema_field(HubMenuItemSerializer(many=True))
     def get_children(self, obj):
         user = _get_context_user(self.context)
         queryset = (
-            obj.menu_items
-            .filter(parent__isnull=True, is_active=True)
+            obj.menu_items.filter(parent__isnull=True, is_active=True)
             .select_related("module")
             .prefetch_related("permissions")
             .order_by("order", "name")
@@ -137,6 +138,12 @@ class HubModuleSerializer(serializers.ModelSerializer):
             context=self.context,
         ).data
 
+    @extend_schema_field(
+        serializers.DictField(
+            child=serializers.CharField(allow_blank=True, allow_null=True),
+            allow_null=True,
+        )
+    )
     def get_remote(self, obj):
         if not obj.mfe_enabled:
             return None
@@ -154,5 +161,3 @@ class HubMenuItemFavoriteSerializer(serializers.Serializer):
 
 # Compatibilidade temporária com imports antigos.
 HubModuleFavoriteSerializer = HubMenuItemFavoriteSerializer
-
-

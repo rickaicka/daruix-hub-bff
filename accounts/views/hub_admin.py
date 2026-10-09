@@ -1,4 +1,4 @@
-﻿from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.decorators import action
@@ -27,6 +27,7 @@ from accounts.serializers.hub_admin import (
     AdminSupplierSerializer,
     AdminUserGroupSerializer,
     AdminUserSerializer,
+    HubAdminOptionsSerializer,
 )
 from accounts.serializers.hub_module_serializer import HubModuleSerializer
 from accounts.services.hub_module_service import get_user_modules
@@ -56,14 +57,17 @@ class HubAdminOptionsView(APIView):
             "como tipos de usuário, grupos de cliente, grupos de colaborador "
             "e origens de usuário."
         ),
+        responses=HubAdminOptionsSerializer,
     )
     def get(self, request):
-        return Response({
-            "user_types": choices_to_payload(UserType.choices),
-            "client_groups": choices_to_payload(ClientGroup.choices),
-            "employee_groups": choices_to_payload(EmployeeGroup.choices),
-            "user_origins": choices_to_payload(User.USER_ORIGIN_CHOICES),
-        })
+        return Response(
+            {
+                "user_types": choices_to_payload(UserType.choices),
+                "client_groups": choices_to_payload(ClientGroup.choices),
+                "employee_groups": choices_to_payload(EmployeeGroup.choices),
+                "user_origins": choices_to_payload(User.USER_ORIGIN_CHOICES),
+            }
+        )
 
 
 @extend_schema_view(
@@ -101,12 +105,7 @@ class HubAdminOptionsView(APIView):
     ),
 )
 class AdminUserViewSet(ModelViewSet):
-    queryset = (
-        User.objects
-        .select_related("group")
-        .all()
-        .order_by("name")
-    )
+    queryset = User.objects.select_related("group").all().order_by("name")
 
     serializer_class = AdminUserSerializer
     permission_classes = [IsAdminUser]
@@ -153,10 +152,12 @@ class AdminUserViewSet(ModelViewSet):
     def permissions(self, request, pk=None):
         user = self.get_object()
 
-        return Response({
-            "user_id": user.id,
-            "permissions": get_user_permission_codes(user),
-        })
+        return Response(
+            {
+                "user_id": user.id,
+                "permissions": get_user_permission_codes(user),
+            }
+        )
 
     @action(
         detail=True,
@@ -167,14 +168,16 @@ class AdminUserViewSet(ModelViewSet):
         user = self.get_object()
         modules = get_user_modules(user)
 
-        return Response({
-            "user_id": user.id,
-            "modules": HubModuleSerializer(
-                modules,
-                many=True,
-                context={"user": user},
-            ).data,
-        })
+        return Response(
+            {
+                "user_id": user.id,
+                "modules": HubModuleSerializer(
+                    modules,
+                    many=True,
+                    context={"user": user},
+                ).data,
+            }
+        )
 
 
 @extend_schema_view(
@@ -205,10 +208,7 @@ class AdminUserViewSet(ModelViewSet):
 )
 class AdminHubModuleViewSet(ModelViewSet):
     queryset = (
-        HubModule.objects
-        .select_related("permission")
-        .all()
-        .order_by("order", "name")
+        HubModule.objects.select_related("permission").all().order_by("order", "name")
     )
 
     serializer_class = AdminHubModuleSerializer
@@ -384,8 +384,7 @@ class AdminUserGroupViewSet(ModelViewSet):
 )
 class AdminGroupPermissionViewSet(ModelViewSet):
     queryset = (
-        GroupPermission.objects
-        .select_related("group", "permission")
+        GroupPermission.objects.select_related("group", "permission")
         .all()
         .order_by(
             "group__user_type",
@@ -448,8 +447,7 @@ class AdminGroupPermissionViewSet(ModelViewSet):
 )
 class AdminClientViewSet(ModelViewSet):
     queryset = (
-        Client.objects
-        .select_related("user", "parent_client")
+        Client.objects.select_related("user", "parent_client")
         .all()
         .order_by("trade_name", "legal_name")
     )
@@ -506,12 +504,7 @@ class AdminClientViewSet(ModelViewSet):
     ),
 )
 class AdminEmployeeViewSet(ModelViewSet):
-    queryset = (
-        Employee.objects
-        .select_related("user")
-        .all()
-        .order_by("user__name")
-    )
+    queryset = Employee.objects.select_related("user").all().order_by("user__name")
 
     serializer_class = AdminEmployeeSerializer
     permission_classes = [IsAdminUser]
@@ -565,8 +558,7 @@ class AdminEmployeeViewSet(ModelViewSet):
 )
 class AdminSupplierViewSet(ModelViewSet):
     queryset = (
-        Supplier.objects
-        .select_related("user")
+        Supplier.objects.select_related("user")
         .all()
         .order_by("trade_name", "legal_name")
     )

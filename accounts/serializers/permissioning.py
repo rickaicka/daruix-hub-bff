@@ -31,7 +31,7 @@ class UserGroupSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_permissions_count(self, obj):
+    def get_permissions_count(self, obj) -> int:
         return obj.group_permissions.filter(
             is_active=True,
             permission__is_active=True,
@@ -42,7 +42,9 @@ class GroupPermissionSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(source="group.name", read_only=True)
     group_user_type = serializers.CharField(source="group.user_type", read_only=True)
     permission_code = serializers.CharField(source="permission.code", read_only=True)
-    permission_module = serializers.CharField(source="permission.module", read_only=True)
+    permission_module = serializers.CharField(
+        source="permission.module", read_only=True
+    )
 
     class Meta:
         model = GroupPermission
@@ -59,6 +61,4 @@ class GroupPermissionSerializer(serializers.ModelSerializer):
 
 
 class MyPermissionsSerializer(serializers.Serializer):
-    permissions = serializers.ListField(
-        child=serializers.CharField()
-    )
+    permissions = serializers.ListField(child=serializers.CharField())

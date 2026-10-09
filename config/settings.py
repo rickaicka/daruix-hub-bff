@@ -4,7 +4,6 @@ from pathlib import Path
 import dj_database_url
 from decouple import config
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config(
@@ -50,7 +49,8 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "django_filters",
     "accounts",
-    "budgeting",
+    "commercial.apps.CommercialConfig",
+    "budgeting.apps.BudgetingConfig",
     "memorando_remessas.apps.MemorandoRemessasConfig",
 ]
 
@@ -89,6 +89,13 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API interna do Daruix Hub",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "CompositionStatusEnum": "budgeting.choices.CompositionStatus",
+        "ImportStatusEnum": "budgeting.choices.ImportStatus",
+        "ShipmentMemoStatusEnum": (
+            "memorando_remessas.models.choices.ShipmentMemoStatus"
+        ),
+    },
 }
 
 
@@ -162,27 +169,17 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
-            "django.contrib.auth.password_validation."
-            "UserAttributeSimilarityValidator"
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
         ),
     },
     {
-        "NAME": (
-            "django.contrib.auth.password_validation."
-            "MinimumLengthValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.MinimumLengthValidator"),
     },
     {
-        "NAME": (
-            "django.contrib.auth.password_validation."
-            "CommonPasswordValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.CommonPasswordValidator"),
     },
     {
-        "NAME": (
-            "django.contrib.auth.password_validation."
-            "NumericPasswordValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.NumericPasswordValidator"),
     },
 ]
 
@@ -201,9 +198,7 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": (
-            "whitenoise.storage.CompressedManifestStaticFilesStorage"
-        ),
+        "BACKEND": ("whitenoise.storage.CompressedManifestStaticFilesStorage"),
     },
 }
 
@@ -217,15 +212,17 @@ LEGACY_AUTH_ENABLED = config(
     cast=bool,
 )
 
-LEGACY_BRIDGE_MODE = config(
-    "LEGACY_BRIDGE_MODE",
-    default="subprocess",
-).strip().lower()
+LEGACY_BRIDGE_MODE = (
+    config(
+        "LEGACY_BRIDGE_MODE",
+        default="subprocess",
+    )
+    .strip()
+    .lower()
+)
 
 if LEGACY_BRIDGE_MODE not in {"http", "subprocess"}:
-    raise ValueError(
-        "LEGACY_BRIDGE_MODE deve ser 'http' ou 'subprocess'."
-    )
+    raise ValueError("LEGACY_BRIDGE_MODE deve ser 'http' ou 'subprocess'.")
 
 LEGACY_BRIDGE_URL = config(
     "LEGACY_BRIDGE_URL",
@@ -240,13 +237,13 @@ LEGACY_BRIDGE_TOKEN = config(
 LEGACY_BRIDGE_CONNECT_TIMEOUT = config(
     "LEGACY_BRIDGE_CONNECT_TIMEOUT",
     default=3,
-    cast=int,
+    cast=float,
 )
 
 LEGACY_BRIDGE_READ_TIMEOUT = config(
     "LEGACY_BRIDGE_READ_TIMEOUT",
-    default=15,
-    cast=int,
+    default=60,
+    cast=float,
 )
 
 LEGACY_DB_PATH = config(
@@ -266,11 +263,7 @@ LEGACY_AUTH_BRIDGE_PATH = config(
 
 LEGACY_MEMORANDO_REMESSAS_BRIDGE_PATH = config(
     "LEGACY_MEMORANDO_REMESSAS_BRIDGE_PATH",
-    default=str(
-        BASE_DIR
-        / "legacy_reader"
-        / "memorando_remessas_bridge.py"
-    ),
+    default=str(BASE_DIR / "legacy_reader" / "memorando_remessas_bridge.py"),
 )
 
 LEGACY_BRIDGE_TIMEOUT_SECONDS = config(
@@ -304,10 +297,14 @@ SHIPMENT_MEMO_ALLOWED_FILE_EXTENSIONS = [
     ".zip",
 ]
 
-SHIPMENT_MEMO_RECIPIENT_EMAIL = config(
-    "SHIPMENT_MEMO_RECIPIENT_EMAIL",
-    default="",
-).strip().lower()
+SHIPMENT_MEMO_RECIPIENT_EMAIL = (
+    config(
+        "SHIPMENT_MEMO_RECIPIENT_EMAIL",
+        default="",
+    )
+    .strip()
+    .lower()
+)
 
 SHIPMENT_MEMO_CC_EMAILS = [
     email.strip().lower()
@@ -381,16 +378,3 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ValueError(
         "EMAIL_USE_TLS e EMAIL_USE_SSL não podem estar ativos ao mesmo tempo."
     )
-
-LEGACY_BRIDGE_URL = config("LEGACY_BRIDGE_URL")
-LEGACY_BRIDGE_TOKEN = config("LEGACY_BRIDGE_TOKEN")
-LEGACY_BRIDGE_CONNECT_TIMEOUT = config(
-    "LEGACY_BRIDGE_CONNECT_TIMEOUT",
-    cast=float,
-    default=3,
-)
-LEGACY_BRIDGE_READ_TIMEOUT = config(
-    "LEGACY_BRIDGE_READ_TIMEOUT",
-    cast=float,
-    default=60,
-)

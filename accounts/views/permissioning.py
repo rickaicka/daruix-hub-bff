@@ -1,4 +1,5 @@
-﻿from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from drf_spectacular.utils import extend_schema
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -72,6 +73,11 @@ class GroupPermissionViewSet(ModelViewSet):
 class MyPermissionsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=["permissions"],
+        summary="Listar permissões do usuário autenticado",
+        responses=MyPermissionsSerializer,
+    )
     def get(self, request):
         permissions = get_user_permission_codes(request.user)
 
@@ -82,4 +88,3 @@ class MyPermissionsView(APIView):
         )
 
         return Response(serializer.data)
-

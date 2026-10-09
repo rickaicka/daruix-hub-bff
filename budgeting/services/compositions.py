@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -15,8 +15,7 @@ from budgeting.models import (
     ServiceCompositionVersion,
 )
 
-
-MONEY_QUANTUM = Decimal("0.0001")
+MONEY_QUANTUM = Decimal("0.01")
 
 
 def _latest_version(
@@ -33,6 +32,42 @@ def _latest_version(
 def _subcomposition_unit(subcomposition: ServiceComposition) -> str:
     version = subcomposition.latest_version
     return version.unit if version else ""
+
+
+def _assert_no_subcomposition_cycle(
+    composition: ServiceComposition,
+    subcomposition: ServiceComposition,
+) -> None:
+    """Impede ciclos diretos e indiretos usando a versão mais recente."""
+
+    pending = [subcomposition.pk]
+    visited: set[int] = set()
+
+    while pending:
+        composition_id = pending.pop()
+        if composition_id == composition.pk:
+            raise ValidationError(
+                "A subcomposição informada cria uma referência circular."
+            )
+        if composition_id in visited:
+            continue
+
+        visited.add(composition_id)
+        latest_version_id = (
+            ServiceCompositionVersion.objects.filter(composition_id=composition_id)
+            .order_by("-number")
+            .values_list("id", flat=True)
+            .first()
+        )
+        if latest_version_id is None:
+            continue
+
+        pending.extend(
+            ServiceCompositionItem.objects.filter(
+                version_id=latest_version_id,
+                subcomposition_id__isnull=False,
+            ).values_list("subcomposition_id", flat=True)
+        )
 
 
 def _create_items(
@@ -52,6 +87,10 @@ def _create_items(
             description = description or supply.description
             unit = unit or supply.unit
         elif subcomposition is not None:
+            _assert_no_subcomposition_cycle(
+                version.composition,
+                subcomposition,
+            )
             description = description or subcomposition.name
             unit = unit or _subcomposition_unit(subcomposition)
 
@@ -70,20 +109,27 @@ def _recalculate(version: ServiceCompositionVersion) -> None:
     material = Decimal("0")
     labor = Decimal("0")
     equipment = Decimal("0")
+    total = Decimal("0")
 
     for item in version.items.all():
+        # Preserve a precisão interna dos custos unitários. As parcelas por
+        # natureza continuam disponíveis para o resumo, mas o total da
+        # composição segue a soma dos subtotais das linhas, exatamente como
+        # a grade exibida ao usuário.
         material += item.coefficient * item.material_unit_price
         labor += item.coefficient * item.labor_unit_price
         equipment += item.coefficient * item.equipment_unit_price
+        total += item.subtotal
 
     material = material.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
     labor = labor.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
     equipment = equipment.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    total = total.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
 
     version.material_total = material
     version.labor_total = labor
     version.equipment_total = equipment
-    version.total = material + labor + equipment
+    version.total = total
     version.save(
         update_fields=(
             "material_total",
@@ -122,6 +168,8 @@ def update_draft(
     composition: ServiceComposition,
     validated_data: dict[str, Any],
 ) -> ServiceComposition:
+    composition = ServiceComposition.objects.select_for_update().get(pk=composition.pk)
+
     if composition.origin != DataOrigin.HUB:
         raise ValidationError("Composições legadas são imutáveis.")
 
@@ -158,6 +206,8 @@ def update_draft(
 
 @transaction.atomic
 def publish(composition: ServiceComposition) -> ServiceCompositionVersion:
+    composition = ServiceComposition.objects.select_for_update().get(pk=composition.pk)
+
     if composition.origin != DataOrigin.HUB:
         raise ValidationError("Composições legadas não podem ser publicadas.")
 

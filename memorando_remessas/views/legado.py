@@ -44,6 +44,7 @@ class LegacyClientListView(APIView):
     ]
 
     @extend_schema(
+        operation_id="memorando_remessas_legacy_clients_list",
         tags=["memorando-remessas/legado"],
         summary="Listar clientes do Access",
         description=(
@@ -53,9 +54,7 @@ class LegacyClientListView(APIView):
         parameters=[
             OpenApiParameter(
                 name="search",
-                description=(
-                    "Busca pelo nome ou documento do cliente."
-                ),
+                description=("Busca pelo nome ou documento do cliente."),
                 required=False,
                 type=str,
             ),
@@ -95,18 +94,14 @@ class LegacyClientListView(APIView):
             return build_legacy_error_response(
                 detail=str(error),
                 code="legacy_bridge_unavailable",
-                response_status=(
-                    status.HTTP_503_SERVICE_UNAVAILABLE
-                ),
+                response_status=(status.HTTP_503_SERVICE_UNAVAILABLE),
             )
 
-        response_serializer = (
-            LegacyClientListResponseSerializer(
-                {
-                    "count": len(clients),
-                    "results": clients,
-                }
-            )
+        response_serializer = LegacyClientListResponseSerializer(
+            {
+                "count": len(clients),
+                "results": clients,
+            }
         )
 
         return Response(
@@ -121,6 +116,7 @@ class LegacyWorkListView(APIView):
     ]
 
     @extend_schema(
+        operation_id="memorando_remessas_legacy_works_list",
         tags=["memorando-remessas/legado"],
         summary="Listar obras ativas do Access",
         description=(
@@ -144,8 +140,7 @@ class LegacyWorkListView(APIView):
             OpenApiParameter(
                 name="search",
                 description=(
-                    "Busca por nome da obra, centro de custo "
-                    "ou nome do cliente."
+                    "Busca por nome da obra, centro de custo ou nome do cliente."
                 ),
                 required=False,
                 type=str,
@@ -188,18 +183,14 @@ class LegacyWorkListView(APIView):
             return build_legacy_error_response(
                 detail=str(error),
                 code="legacy_bridge_unavailable",
-                response_status=(
-                    status.HTTP_503_SERVICE_UNAVAILABLE
-                ),
+                response_status=(status.HTTP_503_SERVICE_UNAVAILABLE),
             )
 
-        response_serializer = (
-            LegacyWorkListResponseSerializer(
-                {
-                    "count": len(works),
-                    "results": works,
-                }
-            )
+        response_serializer = LegacyWorkListResponseSerializer(
+            {
+                "count": len(works),
+                "results": works,
+            }
         )
 
         return Response(
@@ -214,6 +205,7 @@ class LegacyWorkDetailView(APIView):
     ]
 
     @extend_schema(
+        operation_id="memorando_remessas_legacy_works_retrieve",
         tags=["memorando-remessas/legado"],
         summary="Detalhar obra ativa do Access",
         description=(
@@ -223,9 +215,7 @@ class LegacyWorkDetailView(APIView):
         responses={
             200: LegacyWorkSerializer,
             404: OpenApiResponse(
-                description=(
-                    "Obra não encontrada ou finalizada."
-                ),
+                description=("Obra não encontrada ou finalizada."),
             ),
             503: LegacyBridgeErrorSerializer,
         },
@@ -244,17 +234,12 @@ class LegacyWorkDetailView(APIView):
             return build_legacy_error_response(
                 detail=str(error),
                 code="legacy_bridge_unavailable",
-                response_status=(
-                    status.HTTP_503_SERVICE_UNAVAILABLE
-                ),
+                response_status=(status.HTTP_503_SERVICE_UNAVAILABLE),
             )
 
         if not work:
             return build_legacy_error_response(
-                detail=(
-                    "Obra não encontrada ou não está ativa "
-                    "no sistema legado."
-                ),
+                detail=("Obra não encontrada ou não está ativa no sistema legado."),
                 code="legacy_work_not_found",
                 response_status=status.HTTP_404_NOT_FOUND,
             )

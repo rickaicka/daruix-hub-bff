@@ -10,9 +10,20 @@ from accounts.models import (
     Supplier,
     UserGroup,
 )
-from accounts.models.choices import UserType
 
 User = get_user_model()
+
+
+class AdminChoiceOptionSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
+class HubAdminOptionsSerializer(serializers.Serializer):
+    user_types = AdminChoiceOptionSerializer(many=True)
+    client_groups = AdminChoiceOptionSerializer(many=True)
+    employee_groups = AdminChoiceOptionSerializer(many=True)
+    user_origins = AdminChoiceOptionSerializer(many=True)
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
@@ -73,7 +84,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "permissions_count",
         ]
 
-    def get_permissions_count(self, obj):
+    def get_permissions_count(self, obj) -> int:
         if not obj.group:
             return 0
 
@@ -94,9 +105,11 @@ class AdminUserSerializer(serializers.ModelSerializer):
         )
 
         if group and user_type and group.user_type != user_type:
-            raise serializers.ValidationError({
-                "group": "O grupo selecionado não pertence ao tipo de usuário informado."
-            })
+            raise serializers.ValidationError(
+                {
+                    "group": "O grupo selecionado não pertence ao tipo de usuário informado."
+                }
+            )
 
         return attrs
 
@@ -104,9 +117,9 @@ class AdminUserSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password", None)
 
         if not password:
-            raise serializers.ValidationError({
-                "password": "A senha é obrigatória para criar um usuário."
-            })
+            raise serializers.ValidationError(
+                {"password": "A senha é obrigatória para criar um usuário."}
+            )
 
         user = User(**validated_data)
         user.set_password(password)
@@ -205,7 +218,7 @@ class AdminUserGroupSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_permissions_count(self, obj):
+    def get_permissions_count(self, obj) -> int:
         return obj.group_permissions.filter(
             is_active=True,
             permission__is_active=True,

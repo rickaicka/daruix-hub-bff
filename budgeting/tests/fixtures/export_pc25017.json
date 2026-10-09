@@ -1,0 +1,2198 @@
+{
+  "audience": "DARUIX",
+  "number": "25017-00",
+  "revision": 0,
+  "proposal_code": "PC25017",
+  "party_name": "CHAMA SUPERMERCADOS",
+  "work_name": "Serviços preliminares - Inconfidência Mineira",
+  "date": "24/09/2026",
+  "total": "22000.00",
+  "stages": [
+    {
+      "number": "1",
+      "name": "SERVIÇOS PRELIMINARES",
+      "total": "22000.00",
+      "items": [
+        {
+          "number": "1.1",
+          "description": "LIMPEZA DO TERRENO COM RETIRADA DA VEGETAÇÃO SECA, ENTULHO, LIXO E SUCATAS COM REMOÇÃO DO MATERIAL PARA O BOTA FORA",
+          "unit": "VB",
+          "quantity": "1",
+          "unit_price": "13879.79",
+          "total": "13879.79",
+          "cost": {
+            "material": "0",
+            "labor": "10600",
+            "equipment": "0",
+            "unit_cost": "10600",
+            "apply_bdi": true,
+            "discount": "3.16",
+            "components": [
+              {
+                "source_path": "1",
+                "description_snapshot": "Subcomposição de demonstração",
+                "unit_snapshot": "VB",
+                "coefficient": "1",
+                "display_only": true,
+                "enabled": true,
+                "labor_unit_price": "10600"
+              },
+              {
+                "source_path": "1.1",
+                "description_snapshot": "Mão de obra detalhada de demonstração",
+                "unit_snapshot": "HH",
+                "coefficient": "100",
+                "labor_unit_price": "106",
+                "enabled": true
+              },
+              {
+                "source_path": "1.2",
+                "description_snapshot": "INSUMO_INTERNO_DESATIVADO",
+                "unit_snapshot": "UN",
+                "coefficient": "1",
+                "material_unit_price": "50",
+                "enabled": false
+              }
+            ]
+          }
+        },
+        {
+          "number": "1.2",
+          "description": "SONDAGEM À PERCUSSÃO (SERÃO 2 FUROS)",
+          "unit": "VB",
+          "quantity": "1",
+          "unit_price": "4453.02",
+          "total": "4453.02",
+          "cost": {
+            "material": "0",
+            "labor": "3400",
+            "equipment": "0",
+            "unit_cost": "3400",
+            "apply_bdi": true,
+            "discount": "0",
+            "components": []
+          }
+        },
+        {
+          "number": "1.3",
+          "description": "LEVANTAMENTO TOPOGRÁFICO",
+          "unit": "VB",
+          "quantity": "1",
+          "unit_price": "2357.48",
+          "total": "2357.48",
+          "cost": {
+            "material": "0",
+            "labor": "1800",
+            "equipment": "0",
+            "unit_cost": "1800",
+            "apply_bdi": true,
+            "discount": "0",
+            "components": []
+          }
+        },
+        {
+          "number": "1.4",
+          "description": "REFORMA DO PORTÃO DE CORRER",
+          "unit": "VB",
+          "quantity": "1",
+          "unit_price": "1309.71",
+          "total": "1309.71",
+          "cost": {
+            "material": "0",
+            "labor": "1000",
+            "equipment": "0",
+            "unit_cost": "1000",
+            "apply_bdi": true,
+            "discount": "0",
+            "components": []
+          }
+        }
+      ]
+    }
+  ],
+  "di": {
+    "version": 4,
+    "kind": "DI",
+    "title": "D.I.",
+    "description": "Despesas indiretas desta revisão. Item, Discriminação e Unidade são estruturais. Quantidade, Material e Mão de obra são editáveis. Unitário e Custo total são calculados. Inclui as memórias auxiliares 01.08 a 01.13 da guia D.I.",
+    "columns": [
+      {
+        "key": "item",
+        "label": "Item",
+        "editable": false,
+        "type": "text"
+      },
+      {
+        "key": "discrimination",
+        "label": "Discriminação",
+        "editable": false,
+        "type": "text"
+      },
+      {
+        "key": "unit",
+        "label": "Un.",
+        "editable": false,
+        "type": "text"
+      },
+      {
+        "key": "quantity",
+        "label": "Quant.",
+        "editable": true,
+        "type": "number"
+      },
+      {
+        "key": "material",
+        "label": "Material",
+        "editable": true,
+        "type": "currency"
+      },
+      {
+        "key": "labor",
+        "label": "Mão de obra",
+        "editable": true,
+        "type": "currency"
+      },
+      {
+        "key": "unit_price",
+        "label": "Unitário",
+        "editable": false,
+        "type": "currency"
+      },
+      {
+        "key": "total",
+        "label": "Custo total (R$)",
+        "editable": false,
+        "type": "currency"
+      }
+    ],
+    "rows": [
+      {
+        "key": "group_01",
+        "item": "01",
+        "discrimination": "CONSUMOS",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "66.3000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "66.30"
+        }
+      },
+      {
+        "key": "01_01",
+        "item": "01.01",
+        "discrimination": "Consumo de materiais de escritório",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "50.0000",
+          "labor": "0.0000",
+          "unit_price": "50.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_02",
+        "item": "01.02",
+        "discrimination": "Consumo de medicamentos de emergência",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "20.0000",
+          "labor": "0.0000",
+          "unit_price": "20.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_03",
+        "item": "01.03",
+        "discrimination": "Aluguel de computador / impressora",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "100.0000",
+          "labor": "0.0000",
+          "unit_price": "100.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_04",
+        "item": "01.04",
+        "discrimination": "Aluguel de telefone",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "100.0000",
+          "labor": "0.0000",
+          "unit_price": "100.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_05",
+        "item": "01.05",
+        "discrimination": "Consumo de telefone",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "500.0000",
+          "labor": "0.0000",
+          "unit_price": "500.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_06",
+        "item": "01.06",
+        "discrimination": "Consumo de água",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "300.0000",
+          "labor": "0.0000",
+          "unit_price": "300.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_07",
+        "item": "01.07",
+        "discrimination": "Consumo de energia",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "500.0000",
+          "labor": "0.0000",
+          "unit_price": "500.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_08",
+        "item": "01.08",
+        "discrimination": "Alimentação pessoal administrativo",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_09",
+        "item": "01.09",
+        "discrimination": "Alimentação pessoal direto (operário)",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_10",
+        "item": "01.10",
+        "discrimination": "Transporte pessoal administrativo",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_11",
+        "item": "01.11",
+        "discrimination": "Transporte pessoal direto (operário)",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_12",
+        "item": "01.12",
+        "discrimination": "Equipamento de Proteção Individual (EPI)",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_13",
+        "item": "01.13",
+        "discrimination": "Horas Extras",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_14",
+        "item": "01.14",
+        "discrimination": "Plotagens / cópias xérox / cópias heliográficas",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "500.0000",
+          "labor": "0.0000",
+          "unit_price": "500.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_15",
+        "item": "01.15",
+        "discrimination": "Controle tecnológico do concreto e aço",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "1000.0000",
+          "labor": "0.0000",
+          "unit_price": "1000.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_16",
+        "item": "01.16",
+        "discrimination": "Controle tecnológico do solo",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_17",
+        "item": "01.17",
+        "discrimination": "Passagem de avião",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_18",
+        "item": "01.18",
+        "discrimination": "Estadia / Hotel",
+        "unit": "dia",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "150.0000",
+          "labor": "0.0000",
+          "unit_price": "150.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_19",
+        "item": "01.19",
+        "discrimination": "Gasolina /Álcool / Diesel",
+        "unit": "km",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "78.000000",
+          "material": "0.8500",
+          "labor": "0.0000",
+          "unit_price": "0.8500",
+          "total": "66.30"
+        }
+      },
+      {
+        "key": "01_20",
+        "item": "01.20",
+        "discrimination": "Aluguel de casa para pessoal da obra",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "1000.0000",
+          "labor": "0.0000",
+          "unit_price": "1000.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "01_21",
+        "item": "01.21",
+        "discrimination": "Fretes e carretos",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "01",
+        "values": {
+          "quantity": "0.000000",
+          "material": "500.0000",
+          "labor": "0.0000",
+          "unit_price": "500.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "group_02",
+        "item": "02",
+        "discrimination": "EQUIPAMENTOS",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_01",
+        "item": "02.01",
+        "discrimination": "Betoneira 320 litros motor trifásico, pot. 3HP 220V",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "260.0000",
+          "labor": "0.0000",
+          "unit_price": "260.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_02",
+        "item": "02.02",
+        "discrimination": "Serra circular 7\"",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "120.0000",
+          "labor": "0.0000",
+          "unit_price": "120.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_03",
+        "item": "02.03",
+        "discrimination": "Máquina de cortar ferro",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "200.0000",
+          "labor": "0.0000",
+          "unit_price": "200.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_04",
+        "item": "02.04",
+        "discrimination": "Serra manual",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "80.0000",
+          "labor": "0.0000",
+          "unit_price": "80.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_05",
+        "item": "02.05",
+        "discrimination": "Compactador de solos tipo sapo elétrico 220V",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "480.0000",
+          "labor": "0.0000",
+          "unit_price": "480.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_06",
+        "item": "02.06",
+        "discrimination": "Diversos manuais",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "180.0000",
+          "labor": "0.0000",
+          "unit_price": "180.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_07",
+        "item": "02.07",
+        "discrimination": "Andaime metálico tubular 1,00 x 2,00m",
+        "unit": "m²/mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "15.0000",
+          "labor": "0.0000",
+          "unit_price": "15.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_08",
+        "item": "02.08",
+        "discrimination": "Andaime fachadeiro 1,00 x 2,00 x 1,00m",
+        "unit": "m²/mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "7.0000",
+          "labor": "0.0000",
+          "unit_price": "7.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_09",
+        "item": "02.09",
+        "discrimination": "Guincho veloz",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "550.0000",
+          "labor": "0.0000",
+          "unit_price": "550.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_10",
+        "item": "02.10",
+        "discrimination": "Martelete elétrico, com potência de 2KW e diâmetro do furo de 28mm",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "500.0000",
+          "labor": "0.0000",
+          "unit_price": "500.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_11",
+        "item": "02.11",
+        "discrimination": "Furadeira manual, modelo 1/2\", com rotação de 1.300 por minuto",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "100.0000",
+          "labor": "0.0000",
+          "unit_price": "100.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_12",
+        "item": "02.12",
+        "discrimination": "Torre monta carga",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_13",
+        "item": "02.13",
+        "discrimination": "Vibrador concreto, elétrico, com potência de 5 HP",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "200.0000",
+          "labor": "0.0000",
+          "unit_price": "200.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "02_14",
+        "item": "02.14",
+        "discrimination": "LOCAÇÃO DE FERRAMENTAS",
+        "unit": "VB",
+        "row_type": "ITEM",
+        "group": "02",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "group_03",
+        "item": "03",
+        "discrimination": "CANTEIRO / SERVIÇOS PRELIMINARES",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_01",
+        "item": "03.01",
+        "discrimination": "Barracão para escritório",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "20.0000",
+          "labor": "15.0000",
+          "unit_price": "35.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_02",
+        "item": "03.02",
+        "discrimination": "Fechamento para guarda de materiais",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "20.0000",
+          "labor": "15.0000",
+          "unit_price": "35.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_03",
+        "item": "03.03",
+        "discrimination": "Barracão para forma e aço",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "20.0000",
+          "labor": "15.0000",
+          "unit_price": "35.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_04",
+        "item": "03.04",
+        "discrimination": "Tapume de compensado com pintura",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "20.0000",
+          "labor": "15.0000",
+          "unit_price": "35.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_05",
+        "item": "03.05",
+        "discrimination": "Tapume com divisória",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "30.0000",
+          "labor": "8.0000",
+          "unit_price": "38.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_06",
+        "item": "03.06",
+        "discrimination": "Locação de container escritório com 1 sanitário",
+        "unit": "un x mês",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "350.0000",
+          "labor": "0.0000",
+          "unit_price": "350.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_07",
+        "item": "03.07",
+        "discrimination": "Locação de container sanitário",
+        "unit": "un x mês",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "480.0000",
+          "labor": "0.0000",
+          "unit_price": "480.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_08",
+        "item": "03.08",
+        "discrimination": "Frete para container escritório e santiário",
+        "unit": "vg",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "500.0000",
+          "labor": "0.0000",
+          "unit_price": "500.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_09",
+        "item": "03.09",
+        "discrimination": "Transporte horizontal / vertical",
+        "unit": "hs",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_10",
+        "item": "03.10",
+        "discrimination": "Ligação provisória de água e esgoto",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_11",
+        "item": "03.11",
+        "discrimination": "Ligação provisória de energia",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_12",
+        "item": "03.12",
+        "discrimination": "Rede provisória de água e esgoto",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_13",
+        "item": "03.13",
+        "discrimination": "Rede provisória de energia",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_14",
+        "item": "03.14",
+        "discrimination": "Placas de obra",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "350.0000",
+          "labor": "0.0000",
+          "unit_price": "350.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_15",
+        "item": "03.15",
+        "discrimination": "Limpeza do terreno",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_16",
+        "item": "03.16",
+        "discrimination": "Locação da obra",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "1.5000",
+          "labor": "0.5000",
+          "unit_price": "2.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "03_17",
+        "item": "03.17",
+        "discrimination": "Equipe de topografia",
+        "unit": "dia",
+        "row_type": "ITEM",
+        "group": "03",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "220.0000",
+          "unit_price": "220.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "group_04",
+        "item": "04",
+        "discrimination": "ADMINISTRAÇÃO DA OBRA",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "2228.7800",
+          "unit_price": "0.0000",
+          "total": "2228.78"
+        }
+      },
+      {
+        "key": "04_01",
+        "item": "04.01",
+        "discrimination": "Engenheiro (1/2 período)",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.170000",
+          "material": "0.0000",
+          "labor": "13110.4775",
+          "unit_price": "13110.4775",
+          "total": "2228.78"
+        }
+      },
+      {
+        "key": "04_02",
+        "item": "04.02",
+        "discrimination": "Mestre de obras",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "21453.5100",
+          "unit_price": "21453.5100",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_03",
+        "item": "04.03",
+        "discrimination": "Encarregado",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "4210.8000",
+          "unit_price": "4210.8000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_04",
+        "item": "04.04",
+        "discrimination": "Apontador",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "2723.6000",
+          "unit_price": "2723.6000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_05",
+        "item": "04.05",
+        "discrimination": "Almoxarife",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "2723.6000",
+          "unit_price": "2723.6000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_06",
+        "item": "04.06",
+        "discrimination": "Operador de guincho",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "2723.6000",
+          "unit_price": "2723.6000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_07",
+        "item": "04.07",
+        "discrimination": "Vigia diurno",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_07_2",
+        "item": "04.07",
+        "discrimination": "Vigia noturno",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "2200.0000",
+          "unit_price": "2200.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_08",
+        "item": "04.08",
+        "discrimination": "Estagiário",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "1100.0000",
+          "unit_price": "1100.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "04_09",
+        "item": "04.09",
+        "discrimination": "Tecnico de Segurança",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "04",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "5000.0000",
+          "unit_price": "5000.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "group_05",
+        "item": "05",
+        "discrimination": "LIMPEZA DA OBRA / SERVIÇOS FINAIS",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "05",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "05_01",
+        "item": "05.01",
+        "discrimination": "Limpeza permanente de obra",
+        "unit": "mês",
+        "row_type": "ITEM",
+        "group": "05",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "5720.0000",
+          "unit_price": "5720.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "05_02",
+        "item": "05.02",
+        "discrimination": "Remoção de entulho - caçamba",
+        "unit": "un x mês",
+        "row_type": "ITEM",
+        "group": "05",
+        "values": {
+          "quantity": "0.000000",
+          "material": "220.0000",
+          "labor": "0.0000",
+          "unit_price": "220.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "05_03",
+        "item": "05.03",
+        "discrimination": "Limpeza final de obra",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "05",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "05_04",
+        "item": "05.04",
+        "discrimination": "Desmobilização da obra",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "05",
+        "values": {
+          "quantity": "0.000000",
+          "material": "1200.0000",
+          "labor": "0.0000",
+          "unit_price": "1200.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "group_06",
+        "item": "06",
+        "discrimination": "PROJETOS",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_01",
+        "item": "06.01",
+        "discrimination": "Levantamento planialtimétrico",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "1.0000",
+          "labor": "0.0000",
+          "unit_price": "1.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_02",
+        "item": "06.02",
+        "discrimination": "Sondagem",
+        "unit": "m",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "80.0000",
+          "labor": "0.0000",
+          "unit_price": "80.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_03",
+        "item": "06.03",
+        "discrimination": "Fundações",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "5.0000",
+          "labor": "0.0000",
+          "unit_price": "5.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_04",
+        "item": "06.04",
+        "discrimination": "Estrutura",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "10.0000",
+          "labor": "0.0000",
+          "unit_price": "10.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_05",
+        "item": "06.05",
+        "discrimination": "Arquitetura",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "6.0000",
+          "labor": "0.0000",
+          "unit_price": "6.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_06",
+        "item": "06.06",
+        "discrimination": "Instalações elétricas / hidráulicas",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "3.0000",
+          "labor": "0.0000",
+          "unit_price": "3.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_07",
+        "item": "06.07",
+        "discrimination": "Ar condicionado",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "3.0000",
+          "labor": "0.0000",
+          "unit_price": "3.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_08",
+        "item": "06.08",
+        "discrimination": "As Built",
+        "unit": "m2",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "3.5000",
+          "labor": "0.0000",
+          "unit_price": "3.5000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "06_09",
+        "item": "06.09",
+        "discrimination": "Assessoria de Fundações",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "06",
+        "values": {
+          "quantity": "0.000000",
+          "material": "3000.0000",
+          "labor": "0.0000",
+          "unit_price": "3000.0000",
+          "total": "0.00"
+        }
+      },
+      {
+        "key": "group_07",
+        "item": "07",
+        "discrimination": "TAXAS",
+        "unit": "",
+        "row_type": "GROUP",
+        "group": "07",
+        "values": {
+          "quantity": "0.000000",
+          "material": "150.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "150.00"
+        }
+      },
+      {
+        "key": "07_01",
+        "item": "07.01",
+        "discrimination": "ART",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "07",
+        "values": {
+          "quantity": "1.000000",
+          "material": "150.0000",
+          "labor": "0.0000",
+          "unit_price": "150.0000",
+          "total": "150.00"
+        }
+      },
+      {
+        "key": "07_02",
+        "item": "07.02",
+        "discrimination": "CET",
+        "unit": "vb",
+        "row_type": "ITEM",
+        "group": "07",
+        "values": {
+          "quantity": "0.000000",
+          "material": "0.0000",
+          "labor": "0.0000",
+          "unit_price": "0.0000",
+          "total": "0.00"
+        }
+      }
+    ],
+    "auxiliary_tables": [
+      {
+        "key": "01_08",
+        "item": "01.08",
+        "title": "Alimentação pessoal direto (operário)",
+        "formula": "SUM(lines.total)",
+        "target": {
+          "row": "01_09",
+          "column": "material"
+        },
+        "calculation": "LINE_TOTAL",
+        "rows": [
+          {
+            "key": "01_08_cesta",
+            "discrimination": "Cesta básica",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "40.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_08_cafe",
+            "discrimination": "Café da manhã",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.5000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_08_almoco",
+            "discrimination": "Almoço",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "12.5000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_08_jantar",
+            "discrimination": "Jantar",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "12.5000",
+              "total": "0.00"
+            }
+          }
+        ],
+        "configured": true,
+        "total": "0.00"
+      },
+      {
+        "key": "01_09",
+        "item": "01.09",
+        "title": "Transporte pessoal indireto (operário)",
+        "formula": "SUM(lines.total)",
+        "target": null,
+        "calculation": "TRANSPORT",
+        "rows": [
+          {
+            "key": "01_09_onibus_urbano",
+            "discrimination": "Passagem de ônibus urbano",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_09_onibus_intermunicipal",
+            "discrimination": "Passagem de ônibus intermunicipal",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_09_metro",
+            "discrimination": "Passagem de metrô",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.6500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_09_trem",
+            "discrimination": "Passagem de trem",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.6500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_09_pessoas",
+            "discrimination": "Quantidade de pessoas",
+            "unit": "un",
+            "role": "PEOPLE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_09_passagens",
+            "discrimination": "Quantidade de passagem por pessoa",
+            "unit": "un",
+            "role": "RIDES",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_09_periodo",
+            "discrimination": "Período de utilização mensal",
+            "unit": "un",
+            "role": "PERIOD",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          }
+        ],
+        "configured": true,
+        "total": "0.00"
+      },
+      {
+        "key": "01_10",
+        "item": "01.10",
+        "title": "Transporte pessoal administrativo",
+        "formula": "SUM(lines.total)",
+        "target": {
+          "row": "01_10",
+          "column": "material"
+        },
+        "calculation": "TRANSPORT",
+        "rows": [
+          {
+            "key": "01_10_onibus_urbano",
+            "discrimination": "Passagem de ônibus urbano",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_10_onibus_intermunicipal",
+            "discrimination": "Passagem de ônibus intermunicipal",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_10_metro",
+            "discrimination": "Passagem de metrô",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.6500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_10_trem",
+            "discrimination": "Passagem de trem",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.6500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_10_pessoas",
+            "discrimination": "Quantidade de pessoas",
+            "unit": "un",
+            "role": "PEOPLE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_10_passagens",
+            "discrimination": "Quantidade de passagem por pessoa",
+            "unit": "un",
+            "role": "RIDES",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_10_periodo",
+            "discrimination": "Período de utilização mensal",
+            "unit": "un",
+            "role": "PERIOD",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          }
+        ],
+        "configured": true,
+        "total": "0.00"
+      },
+      {
+        "key": "01_11",
+        "item": "01.11",
+        "title": "Transporte pessoal direto (operário)",
+        "formula": "SUM(lines.total)",
+        "target": {
+          "row": "01_11",
+          "column": "material"
+        },
+        "calculation": "TRANSPORT",
+        "rows": [
+          {
+            "key": "01_11_onibus_urbano",
+            "discrimination": "Passagem de ônibus urbano",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_11_onibus_intermunicipal",
+            "discrimination": "Passagem de ônibus intermunicipal",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_11_metro",
+            "discrimination": "Passagem de metrô",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.6500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_11_trem",
+            "discrimination": "Passagem de trem",
+            "unit": "un",
+            "role": "FARE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.6500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_11_pessoas",
+            "discrimination": "Quantidade de pessoas",
+            "unit": "un",
+            "role": "PEOPLE",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_11_passagens",
+            "discrimination": "Quantidade de passagem por pessoa",
+            "unit": "un",
+            "role": "RIDES",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_11_periodo",
+            "discrimination": "Período de utilização mensal",
+            "unit": "un",
+            "role": "PERIOD",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.0000",
+              "total": "0.00"
+            }
+          }
+        ],
+        "configured": true,
+        "total": "0.00"
+      },
+      {
+        "key": "01_12",
+        "item": "01.12",
+        "title": "Equipamento de Proteção Individual (EPI)",
+        "formula": "SUM(lines.total)",
+        "target": {
+          "row": "01_12",
+          "column": "material"
+        },
+        "calculation": "LINE_TOTAL",
+        "rows": [
+          {
+            "key": "01_12_capacete_amarelo",
+            "discrimination": "Capacete amarelo",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "6.5000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_capacete_branco",
+            "discrimination": "Capacete branco com jug e catacra",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "40.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_oculos",
+            "discrimination": "Óculos de proteção",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "2.8000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_protetor",
+            "discrimination": "Protetor auricular",
+            "unit": "par",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "1.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_bota",
+            "discrimination": "Bota de borracha cano médio",
+            "unit": "par",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "20.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_luva_raspa",
+            "discrimination": "Luva de raspa",
+            "unit": "par",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "8.0000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_luva_pvc",
+            "discrimination": "Luva de pvc",
+            "unit": "par",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "3.5000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_luva_vaqueta",
+            "discrimination": "Luva de vaqueta",
+            "unit": "par",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "11.5000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_luva_malha",
+            "discrimination": "Luva de malha pigmentada",
+            "unit": "par",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "1.2000",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_mascara",
+            "discrimination": "Máscara descartável",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "0.8500",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_12_cinto",
+            "discrimination": "Cinto de segurança tipo paraquedista",
+            "unit": "un",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.0000",
+              "unit_price": "55.0000",
+              "total": "0.00"
+            }
+          }
+        ],
+        "configured": true,
+        "total": "0.00"
+      },
+      {
+        "key": "01_13",
+        "item": "01.13",
+        "title": "Horas Extras",
+        "formula": "SUM(lines.total)",
+        "target": {
+          "row": "01_13",
+          "column": "labor"
+        },
+        "calculation": "OVERTIME",
+        "rows": [
+          {
+            "key": "01_13_servente_60",
+            "discrimination": "Servente 60%",
+            "unit": "hh",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.6000",
+              "unit_price": "8.5600",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_13_oficial_60",
+            "discrimination": "Oficial 60%",
+            "unit": "hh",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "1.6000",
+              "unit_price": "10.2200",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_13_servente_100",
+            "discrimination": "Servente 100%",
+            "unit": "hh",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "2.0000",
+              "unit_price": "8.5600",
+              "total": "0.00"
+            }
+          },
+          {
+            "key": "01_13_oficial_100",
+            "discrimination": "Oficial 100%",
+            "unit": "hh",
+            "values": {
+              "quantity": "0.000000",
+              "factor": "2.0000",
+              "unit_price": "10.2200",
+              "total": "0.00"
+            }
+          }
+        ],
+        "configured": true,
+        "total": "0.00"
+      }
+    ],
+    "configured": true,
+    "totals": {
+      "material": "216.30",
+      "labor": "2228.78",
+      "total": "2445.08"
+    },
+    "calculation_totals": {
+      "material": "216.3000000000",
+      "labor": "2228.7811750000",
+      "total": "2445.0811750000"
+    }
+  },
+  "bdi": {
+    "version": 3,
+    "kind": "BDI",
+    "title": "B.D.I.",
+    "description": "Memória de cálculo do BDI desta revisão baseada na guia B.D.I. da planilha orçamentária. Existe um único valor percentual por linha.",
+    "columns": [
+      {
+        "key": "discrimination",
+        "label": "Discriminação",
+        "editable": false,
+        "type": "text"
+      },
+      {
+        "key": "unit",
+        "label": "Un.",
+        "editable": false,
+        "type": "text"
+      },
+      {
+        "key": "percentage",
+        "label": "%",
+        "editable": true,
+        "type": "percentage"
+      },
+      {
+        "key": "amount",
+        "label": "Valor (R$)",
+        "editable": false,
+        "type": "currency"
+      }
+    ],
+    "rows": [
+      {
+        "key": "lucro",
+        "discrimination": "LUCRO",
+        "unit": "%",
+        "values": {
+          "percentage": "11.6500",
+          "amount": "2242.05"
+        }
+      },
+      {
+        "key": "ir_imposto_renda_lucro",
+        "discrimination": "IR - Imposto de Renda sobre lucro",
+        "unit": "%",
+        "values": {
+          "percentage": "1.5000",
+          "amount": "33.63"
+        }
+      },
+      {
+        "key": "cs_contribuicao_social_lucro",
+        "discrimination": "CS - Contribuição Social sobre lucro",
+        "unit": "%",
+        "values": {
+          "percentage": "1.0000",
+          "amount": "22.42"
+        }
+      },
+      {
+        "key": "iss",
+        "discrimination": "ISS",
+        "unit": "%",
+        "values": {
+          "percentage": "5.0000",
+          "amount": "112.10"
+        }
+      },
+      {
+        "key": "pis",
+        "discrimination": "PIS",
+        "unit": "%",
+        "values": {
+          "percentage": "0.6500",
+          "amount": "14.57"
+        }
+      },
+      {
+        "key": "cofins",
+        "discrimination": "COFINS",
+        "unit": "%",
+        "values": {
+          "percentage": "3.0000",
+          "amount": "67.26"
+        }
+      },
+      {
+        "key": "diferencas_impostos",
+        "discrimination": "DIFERENÇAS DE IMPOSTOS",
+        "unit": "%",
+        "values": {
+          "percentage": "6.3900",
+          "amount": "143.27"
+        }
+      },
+      {
+        "key": "imposto_sobre_lucro",
+        "discrimination": "IMPOSTO SOBRE LUCRO",
+        "unit": "%",
+        "values": {
+          "percentage": "1.1700",
+          "amount": "26.23"
+        }
+      },
+      {
+        "key": "imprevistos",
+        "discrimination": "IMPREVISTOS",
+        "unit": "%",
+        "values": {
+          "percentage": "0.0000",
+          "amount": "0.00"
+        }
+      },
+      {
+        "key": "comercial",
+        "discrimination": "COMERCIAL",
+        "unit": "%",
+        "values": {
+          "percentage": "0.0000",
+          "amount": "0.00"
+        }
+      },
+      {
+        "key": "seguros",
+        "discrimination": "SEGUROS",
+        "unit": "%",
+        "values": {
+          "percentage": "0.0000",
+          "amount": "0.00"
+        }
+      },
+      {
+        "key": "reserva_tecnica",
+        "discrimination": "RESERVA TÉCNICA",
+        "unit": "%",
+        "values": {
+          "percentage": "0.0000",
+          "amount": "0.00"
+        }
+      },
+      {
+        "key": "encargos_financeiros",
+        "discrimination": "ENCARGOS FINANCEIROS",
+        "unit": "%",
+        "values": {
+          "percentage": "0.0000",
+          "amount": "0.00"
+        }
+      },
+      {
+        "key": "administracao_central",
+        "discrimination": "ADMINISTRAÇÃO CENTRAL (escritório)",
+        "unit": "%",
+        "values": {
+          "percentage": "0.0000",
+          "amount": "0.00"
+        }
+      }
+    ],
+    "configured": true,
+    "calculated_percentage": "30.9713",
+    "calculated_factor": "1.309712613574",
+    "calculation_status": "CALCULATED",
+    "summary": {
+      "direct_cost": {
+        "material": "0.00",
+        "labor": "16800.00",
+        "total": "16800.00"
+      },
+      "indirect_cost": {
+        "material": "216.30",
+        "labor": "2228.78",
+        "total": "2445.08"
+      },
+      "subtotal_cost": {
+        "material": "216.30",
+        "labor": "19028.78",
+        "total": "19245.08"
+      },
+      "non_tax_percentage": "11.6500",
+      "non_tax_amount": "2242.05",
+      "subtotal_sale": "21487.13",
+      "tax_percentage": "18.7100",
+      "tax_amount": "516.04",
+      "total_sale": "22003.17"
+    },
+    "detail_total_percentage": "30.3600",
+    "detail_total_amount": "2661.54"
+  },
+  "bdi_non_tax_keys": [
+    "lucro",
+    "imprevistos",
+    "comercial",
+    "seguros",
+    "reserva_tecnica",
+    "administracao_central"
+  ],
+  "bdi_tax_keys": [
+    "ir_imposto_renda_lucro",
+    "cs_contribuicao_social_lucro",
+    "iss",
+    "pis",
+    "cofins",
+    "diferencas_impostos",
+    "imposto_sobre_lucro"
+  ]
+}

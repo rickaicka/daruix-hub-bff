@@ -10,6 +10,7 @@ from budgeting.choices import (
     SupplyType,
 )
 from budgeting.models import ServiceComposition, Supply
+from budgeting.selectors import service_composition_queryset
 from budgeting.services.compositions import (
     create_composition,
     new_version,
@@ -55,13 +56,14 @@ class CompositionServiceTests(TestCase):
         version = composition.latest_version
         self.assertEqual(version.status, CompositionStatus.DRAFT)
         self.assertEqual(version.unit, "M³")
-        self.assertEqual(version.material_total, Decimal("25.3125"))
+        self.assertEqual(version.material_total, Decimal("25.3100"))
         self.assertEqual(version.labor_total, Decimal("5.0000"))
         self.assertEqual(version.equipment_total, Decimal("2.5000"))
-        self.assertEqual(version.total, Decimal("32.8125"))
+        self.assertEqual(version.total, Decimal("32.8100"))
         item = version.items.get()
         self.assertEqual(item.description_snapshot, "Cimento")
         self.assertEqual(item.unit_snapshot, "KG")
+        self.assertEqual(item.subtotal, Decimal("32.81"))
 
     def test_update_draft_does_not_mutate_validated_data(self):
         composition = create_composition(self._composition_data())
@@ -96,3 +98,63 @@ class CompositionServiceTests(TestCase):
 
         with self.assertRaises(ValidationError):
             publish(composition)
+
+    def test_rejects_indirect_subcomposition_cycle(self):
+        child = create_composition(
+            {
+                "code": "CMP-CHILD",
+                "name": "Composição filha",
+                "is_active": True,
+                "unit": "UN",
+                "items": [],
+            }
+        )
+        parent = create_composition(
+            {
+                "code": "CMP-PARENT",
+                "name": "Composição pai",
+                "is_active": True,
+                "unit": "UN",
+                "items": [
+                    {
+                        "item_type": CompositionItemType.SUBCOMPOSITION,
+                        "subcomposition": child,
+                        "coefficient": Decimal("1"),
+                        "material_unit_price": Decimal("0"),
+                        "labor_unit_price": Decimal("0"),
+                        "equipment_unit_price": Decimal("0"),
+                    }
+                ],
+            }
+        )
+
+        with self.assertRaises(ValidationError):
+            update_draft(
+                child,
+                {
+                    "items": [
+                        {
+                            "item_type": CompositionItemType.SUBCOMPOSITION,
+                            "subcomposition": parent,
+                            "coefficient": Decimal("1"),
+                            "material_unit_price": Decimal("0"),
+                            "labor_unit_price": Decimal("0"),
+                            "equipment_unit_price": Decimal("0"),
+                        }
+                    ]
+                },
+            )
+
+    def test_selector_prefetches_latest_versions_without_n_plus_one(self):
+        create_composition(self._composition_data())
+        second_data = self._composition_data()
+        second_data["code"] = "CMP-002"
+        second_data["name"] = "Argamassa"
+        create_composition(second_data)
+
+        with self.assertNumQueries(3):
+            compositions = list(service_composition_queryset())
+            for composition in compositions:
+                version = composition.latest_version
+                self.assertIsNotNone(version)
+                list(version.items.all())

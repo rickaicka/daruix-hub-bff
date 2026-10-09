@@ -1,5 +1,10 @@
-from drf_spectacular.utils import OpenApiExample, extend_schema_serializer
+from drf_spectacular.utils import (
+    OpenApiExample,
+    extend_schema_field,
+    extend_schema_serializer,
+)
 from rest_framework import serializers
+
 from accounts.serializers.hub_module_serializer import HubModuleSerializer
 from accounts.services.hub_module_service import get_user_modules
 from accounts.services.permission_service import get_user_permission_codes
@@ -48,6 +53,7 @@ class HubModuleRemoteSerializer(serializers.Serializer):
         allow_null=True,
     )
 
+
 class AuthenticatedUserSerializer(serializers.Serializer):
     id_usuario = serializers.IntegerField()
     username = serializers.CharField()
@@ -95,6 +101,7 @@ class AuthenticatedUserSerializer(serializers.Serializer):
         required=False,
     )
 
+
 class SessionSerializer(serializers.Serializer):
     id = serializers.CharField()
     expira_em = serializers.DateTimeField()
@@ -113,6 +120,7 @@ class RefreshResponseSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()
     token_type = serializers.CharField()
     sessao = SessionSerializer()
+
 
 class LoginResponseSerializer(serializers.Serializer):
     access_token = serializers.CharField()
@@ -170,7 +178,7 @@ class MeResponseSerializer(serializers.Serializer):
         read_only=True,
     )
 
-    def get_nome(self, user):
+    def get_nome(self, user) -> str:
         if getattr(user, "name", None):
             return user.name
 
@@ -181,15 +189,16 @@ class MeResponseSerializer(serializers.Serializer):
 
         return user.username
 
-    def get_grupo(self, user):
+    def get_grupo(self, user) -> str | None:
         if not user.group:
             return None
 
         return user.group.name
 
-    def get_permissoes(self, user):
+    def get_permissoes(self, user) -> list[str]:
         return get_user_permission_codes(user)
 
+    @extend_schema_field(HubModuleSerializer(many=True))
     def get_modulos(self, user):
         modules = get_user_modules(user)
 

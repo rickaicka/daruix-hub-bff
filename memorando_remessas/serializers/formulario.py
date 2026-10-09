@@ -3,9 +3,7 @@ from rest_framework import serializers
 from memorando_remessas.models import ShipmentMemoOption
 
 
-class ShipmentMemoOptionSerializer(
-    serializers.ModelSerializer
-):
+class ShipmentMemoOptionSerializer(serializers.ModelSerializer):
     type_label = serializers.CharField(
         source="get_option_type_display",
         read_only=True,
@@ -25,18 +23,13 @@ class ShipmentMemoOptionSerializer(
         ]
 
 
-class ShipmentMemoOptionsResponseSerializer(
-    serializers.Serializer
-):
-
+class ShipmentMemoOptionsResponseSerializer(serializers.Serializer):
     purposes = ShipmentMemoOptionSerializer(
         many=True,
     )
 
 
-class ResponsibleUserQuerySerializer(
-    serializers.Serializer
-):
+class ResponsibleUserQuerySerializer(serializers.Serializer):
     search = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -53,9 +46,7 @@ class ResponsibleUserQuerySerializer(
     )
 
 
-class ResponsibleUserSerializer(
-    serializers.Serializer
-):
+class ResponsibleUserSerializer(serializers.Serializer):
     id = serializers.IntegerField()
 
     username = serializers.CharField()
@@ -74,7 +65,7 @@ class ResponsibleUserSerializer(
 
     selected_by_default = serializers.SerializerMethodField()
 
-    def get_selected_by_default(self, obj):
+    def get_selected_by_default(self, obj) -> bool:
         request = self.context.get("request")
 
         if not request or not request.user.is_authenticated:
@@ -83,9 +74,7 @@ class ResponsibleUserSerializer(
         return obj.pk == request.user.pk
 
 
-class ResponsibleUserListResponseSerializer(
-    serializers.Serializer
-):
+class ResponsibleUserListResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
 
     results = ResponsibleUserSerializer(

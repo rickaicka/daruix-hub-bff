@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase, override_settings
 
 from accounts.legacy.legacy_auth_client import LegacyAuthClient
+from integrations.legacy_bridge import LegacyBridgeClient
 from memorando_remessas.services.legacy_service import (
     get_legacy_work,
     list_legacy_clients,
     list_legacy_works,
 )
-
 
 SETTINGS = {
     "LEGACY_AUTH_ENABLED": True,
@@ -38,7 +38,9 @@ class LegacyBridgeHttpIntegrationTests(SimpleTestCase):
         request = urlopen.call_args.args[0]
         self.assertTrue(payload["authenticated"])
         self.assertEqual(request.full_url, "http://legacy-bridge:8100/v1/authenticate")
-        self.assertEqual(json.loads(request.data), {"username": "ricardo", "password": "secret"})
+        self.assertEqual(
+            json.loads(request.data), {"username": "ricardo", "password": "secret"}
+        )
         self.assertEqual(request.headers["Authorization"], "Bearer test-token")
 
     @patch("integrations.legacy_bridge.client.urlopen")
@@ -50,5 +52,100 @@ class LegacyBridgeHttpIntegrationTests(SimpleTestCase):
         ]
 
         self.assertEqual(list_legacy_clients(limit=10)[0]["name"], "Cliente A")
-        self.assertEqual(list_legacy_works(client_name="Cliente A")[0]["legacy_work_id"], 575)
+        self.assertEqual(
+            list_legacy_works(client_name="Cliente A")[0]["legacy_work_id"], 575
+        )
         self.assertEqual(get_legacy_work(575)["work_name"], "Obra A")
+
+    @patch("integrations.legacy_bridge.client.urlopen")
+    def test_client_catalog_contract(self, urlopen):
+        urlopen.return_value = response([
+            {
+                "name": "Cliente A",
+                "document": "123",
+                "legacy_key": "a" * 64,
+            }
+        ])
+        client = LegacyBridgeClient()
+        result = client.list_clients_catalog()
+        self.assertEqual(result[0]["legacy_key"], "a" * 64)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://legacy-bridge:8100/v1/clients/catalog")
+
+    @patch("integrations.legacy_bridge.client.urlopen")
+    def test_commercial_catalog_contract(self, urlopen):
+        urlopen.side_effect = [
+            response([{"legacy_id": 1, "name": "Construção civil"}]),
+            response([{"legacy_id": 2, "name": "Construtora"}]),
+        ]
+        client = LegacyBridgeClient()
+        self.assertEqual(client.list_business_segments()[0]["legacy_id"], 1)
+        self.assertEqual(client.list_company_types()[0]["legacy_id"], 2)
+
+    @patch("integrations.legacy_bridge.client.urlopen")
+    def test_budgeting_pagination_uses_shared_http_client(self, urlopen):
+        urlopen.side_effect = [
+            response(
+                {
+                    "items": [{"id": 1}],
+                    "has_more": True,
+                    "next_offset": 1,
+                }
+            ),
+            response(
+                {
+                    "items": [{"id": 2}],
+                    "has_more": False,
+                    "next_offset": None,
+                }
+            ),
+        ]
+
+        items = list(
+            LegacyBridgeClient().iter_budgeting_resource(
+                "supplies",
+                page_size=1,
+            )
+        )
+
+        self.assertEqual(items, [{"id": 1}, {"id": 2}])
+        self.assertEqual(urlopen.call_count, 2)
+
+    @patch("integrations.legacy_bridge.client.urlopen")
+    def test_budget_stage_catalog_contract(self, urlopen):
+        urlopen.return_value = response(
+            [
+                {
+                    "legacy_id": 1,
+                    "legacy_key": "a" * 64,
+                    "legacy_source": "WORK_COST_CENTER",
+                    "code": "CC.01",
+                    "name": "CANTEIRO DE OBRAS",
+                    "category": "OPERATIONAL",
+                    "is_active": True,
+                    "legacy_payload": {},
+                }
+            ]
+        )
+
+        result = LegacyBridgeClient().list_budget_stage_catalog()
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            result[0]["legacy_source"],
+            "WORK_COST_CENTER",
+        )
+
+        request = urlopen.call_args.args[0]
+
+        self.assertEqual(
+            request.full_url,
+            (
+                "http://legacy-bridge:8100"
+                "/v1/budgeting/stage-catalog"
+            ),
+        )
+        self.assertEqual(
+            request.headers["Authorization"],
+            "Bearer test-token",
+        )

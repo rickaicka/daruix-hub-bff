@@ -20,6 +20,9 @@ from accounts.views.hub_admin import (
     AdminUserViewSet,
     HubAdminOptionsView,
 )
+from accounts.views.user_autocomplete import (
+    UserAutocompleteView,
+)
 
 app_name = "accounts"
 
@@ -88,7 +91,11 @@ urlpatterns = [
     path("auth/me/", MeView.as_view(), name="auth-me"),
     path("auth/me/permissions/", MyPermissionsView.as_view(), name="auth-me-permissions"),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
-
+    path(
+        "users/autocomplete/",
+        UserAutocompleteView.as_view(),
+        name="user-autocomplete",
+    ),
     path("hub-admin/opcoes/", HubAdminOptionsView.as_view(), name="hub-admin-opcoes"),
     path(
         "hub/modulos/<slug:slug>/favorito/",
