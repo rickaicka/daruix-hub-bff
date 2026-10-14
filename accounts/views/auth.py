@@ -1,4 +1,4 @@
-﻿from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -50,8 +50,9 @@ class LoginView(APIView):
         summary="Login",
         description=(
             "Authenticates a SGOWEB user by username and password. "
-            "First tries the Django database. If authentication fails, "
-            "it can try the legacy Access authentication bridge."
+            "Existing Hub accounts authenticate locally. Only accounts not "
+            "registered in the Hub are authenticated and imported via Access. "
+            "Access groups are copied only on first registration."
         ),
         request=LoginSerializer,
         responses={
@@ -99,31 +100,16 @@ class LoginView(APIView):
         username = serializer.validated_data["username"]
         password = serializer.validated_data["password"]
 
-        user = authenticate_django_user(
-            request=request,
-            username=username,
-            password=password,
-        )
-
-        if user and (
-                user.user_origin == User.LEGACY_ORIGIN
-                or user.is_migrated_from_access
-        ):
-            try:
-                verified_payload = LegacyAuthClient().authenticate(
-                    username,
-                    password,
-                )
-
-                if verified_payload:
-                    LegacyImportService().synchronize_existing_user_group(
-                        user,
-                        verified_payload,
-                    )
-            except LegacyAuthError:
-                pass
-
-        if not user:
+        # The Hub owns authentication and group management after registration.
+        # Only usernames absent from the Hub can be imported through Access.
+        existing_user = User.objects.filter(username=username).first()
+        if existing_user is not None:
+            user = authenticate_django_user(
+                request=request,
+                username=username,
+                password=password,
+            )
+        else:
             try:
                 user = self._try_legacy_login(username, password)
             except LegacyAuthError as error:

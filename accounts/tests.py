@@ -9,30 +9,6 @@ from accounts.admin import UserAdmin
 from accounts.models import User
 
 
-class LegacyGroupResyncTests(TestCase):
-    def test_existing_account_gets_group_without_recreating_user(self):
-        user = User.objects.create_user(username="legacy_old", name="Legacy", email="legacy_old@example.test", password="pass123", user_origin=User.LEGACY_ORIGIN)
-        pk = user.pk
-        changed = LegacyImportService().synchronize_existing_user_group(user, {"groups": [{"name": "COLABORADOR | COMPRAS"}]})
-        user.refresh_from_db()
-        self.assertTrue(changed)
-        self.assertEqual(user.pk, pk)
-        self.assertEqual(user.group.name, "COLABORADOR | COMPRAS")
-
-    def test_missing_group_does_not_erase_existing_group(self):
-        group = UserGroup.objects.create(user_type=UserType.EMPLOYEE, name="COMPRAS")
-        user = User.objects.create_user(username="legacy_stable", name="Legacy", email="legacy_stable@example.test", password="pass123", user_origin=User.LEGACY_ORIGIN, group=group)
-        self.assertFalse(LegacyImportService().synchronize_existing_user_group(user, {"groups": []}))
-        user.refresh_from_db()
-        self.assertEqual(user.group_id, group.pk)
-
-    def test_django_user_cannot_be_given_legacy_group(self):
-        user = User.objects.create_user(username="native", name="Native", email="native@example.test", password="pass123")
-        self.assertFalse(LegacyImportService().synchronize_existing_user_group(user, {"groups": [{"name": "DIRETORIA"}]}))
-        user.refresh_from_db()
-        self.assertIsNone(user.group)
-
-
 class SafeUserAdminTests(TestCase):
     def setUp(self):
         self.admin_user = User.objects.create_superuser(username="rootadmin", email="rootadmin@example.test", name="Admin", password="pass123")

@@ -47,41 +47,6 @@ class LegacyImportService:
         return group
 
     @transaction.atomic
-    def synchronize_existing_user_group(self, user, payload):
-        if (
-                user.user_origin != User.LEGACY_ORIGIN
-                and not user.is_migrated_from_access
-        ):
-            return False
-
-        group_name = self._legacy_group_name(payload)
-
-        if not group_name:
-            return False
-
-        update_fields = []
-
-        if user.legacy_group_name != group_name:
-            user.legacy_group_name = group_name
-            update_fields.append("legacy_group_name")
-
-        if not user.group_id:
-            user.group = self._resolve_group(group_name)
-            update_fields.append("group")
-
-        if not update_fields:
-            return False
-
-        user.last_legacy_sync_at = timezone.now()
-        update_fields.extend([
-            "last_legacy_sync_at",
-            "updated_at",
-        ])
-
-        user.save(update_fields=update_fields)
-        return True
-
-    @transaction.atomic
     def import_user_from_legacy_payload(self, payload: dict, raw_password: str):
         legacy_user = payload.get("legacy_user") or {}
 
@@ -102,11 +67,16 @@ class LegacyImportService:
             legacy_user.get("last_legacy_login_at")
         )
 
+        # Do not touch Hub-managed data for pre-existing accounts.
+        existing_user = User.objects.filter(username=username).first()
+        if existing_user is not None:
+            return existing_user
+
         group_name = self._legacy_group_name(payload)
         group = self._resolve_group(group_name)
         password_hash = make_password(raw_password)
 
-        user, _ = User.objects.update_or_create(
+        user, _ = User.objects.get_or_create(
             username=username,
             defaults={
                 "name": full_name,
