@@ -105,6 +105,24 @@ class LoginView(APIView):
             password=password,
         )
 
+        if user and (
+                user.user_origin == User.LEGACY_ORIGIN
+                or user.is_migrated_from_access
+        ):
+            try:
+                verified_payload = LegacyAuthClient().authenticate(
+                    username,
+                    password,
+                )
+
+                if verified_payload:
+                    LegacyImportService().synchronize_existing_user_group(
+                        user,
+                        verified_payload,
+                    )
+            except LegacyAuthError:
+                pass
+
         if not user:
             try:
                 user = self._try_legacy_login(username, password)
@@ -142,8 +160,6 @@ class LoginView(APIView):
     def _try_legacy_login(self, username: str, password: str):
         legacy_client = LegacyAuthClient()
         legacy_payload = legacy_client.authenticate(username, password)
-
-        print("LEGACY PAYLOAD:", legacy_payload)
 
         if not legacy_payload:
             return None

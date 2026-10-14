@@ -1,6 +1,9 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils.html import format_html
 
 from accounts.models import (
@@ -204,6 +207,62 @@ class GroupPermissionAdmin(admin.ModelAdmin):
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     model = User
+
+    # All user deletions are logical. Never invoke queryset.delete() or user.delete().
+    actions = ["soft_delete_users", "reactivate_users"]
+
+    def _eligible_users(self, request, queryset):
+        # Protect current account and superusers from accidental deactivation.
+        return queryset.exclude(pk=request.user.pk).exclude(is_superuser=True)
+
+    def has_delete_permission(self, request, obj=None):
+        if not super().has_delete_permission(request, obj):
+            return False
+        if obj is not None and (obj.pk == request.user.pk or obj.is_superuser):
+            return False
+        return True
+
+    def get_deleted_objects(self, objs, request):
+        # No dependent objects will be physically deleted by a soft delete.
+        return [], {}, set(), []
+
+    def delete_model(self, request, obj):
+        if not self.has_delete_permission(request, obj):
+            raise PermissionDenied
+        obj.is_active = False
+        obj.save(update_fields=["is_active"])
+
+    def delete_queryset(self, request, queryset):
+        if not self.has_delete_permission(request):
+            raise PermissionDenied
+        self._eligible_users(request, queryset).update(is_active=False)
+
+    def response_delete(self, request, obj_display, obj_id):
+        self.message_user(
+            request,
+            f'Usuário "{obj_display}" desativado (soft delete). Nenhum vínculo foi removido.',
+            messages.SUCCESS,
+        )
+        return redirect(reverse("admin:accounts_user_changelist"))
+
+    @admin.action(description="Excluir selecionados (soft delete, preservar vínculos)")
+    def soft_delete_users(self, request, queryset):
+        if not self.has_delete_permission(request):
+            raise PermissionDenied
+        eligible = self._eligible_users(request, queryset)
+        count = eligible.filter(is_active=True).update(is_active=False)
+        self.message_user(
+            request,
+            f"{count} usuário(s) desativado(s). Históricos e arquivos preservados.",
+            messages.SUCCESS,
+        )
+
+    @admin.action(description="Reativar usuários selecionados")
+    def reactivate_users(self, request, queryset):
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+        count = self._eligible_users(request, queryset).filter(is_active=False).update(is_active=True)
+        self.message_user(request, f"{count} usuário(s) reativado(s).", messages.SUCCESS)
 
     list_display = [
         "id",
@@ -656,5 +715,3 @@ class UserHubMenuItemFavoriteAdmin(admin.ModelAdmin):
     )
     def module_name(self, obj):
         return obj.menu_item.module.name
-
-

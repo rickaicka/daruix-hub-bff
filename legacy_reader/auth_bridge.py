@@ -36,6 +36,7 @@ def fetch_user_by_username(username):
                 usuNome,
                 usuSenha,
                 usuNomeCompleto,
+                usuGrupo,
                 usuLogado,
                 usuLogadoEm
             FROM [T_Usuario]
@@ -80,6 +81,7 @@ def main():
 
     legacy_username = str(row.usuNome or "").strip()
     full_name = str(row.usuNomeCompleto or "").strip() or legacy_username
+    group_name = str(row.usuGrupo or "").strip()
 
     print_json(
         {
@@ -91,7 +93,8 @@ def main():
                 "email": None,
                 "last_legacy_login_at": row.usuLogadoEm,
             },
-            "groups": [],
+            "groups": ([{"name": group_name, "legacy_name": group_name}]
+                       if group_name else []),
             "modules": [],
             "permissions": [],
         }
