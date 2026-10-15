@@ -72,6 +72,19 @@ jobs:
     environment: production
 
     steps:
+      - name: Diagnosticar SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_FINGERPRINT: ${{ secrets.VPS_HOST_FINGERPRINT }}
+        run: |
+          echo "Fingerprint configurado:"
+          printf '%s\n' "$VPS_FINGERPRINT"
+
+          echo "Fingerprints apresentados pela VPS:"
+          ssh-keyscan -T 10 -p 22 \
+            -t ed25519,ecdsa,rsa "$VPS_HOST" 2>/dev/null \
+            | ssh-keygen -lf - -E sha256
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
