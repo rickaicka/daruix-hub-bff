@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h2>Exclusão definitiva e irreversível</h2>
+<p>Você está prestes a remover permanentemente <strong>{{ usuario.username }}</strong> (ID {{ usuario.pk }}).</p>
+<p>Registros dependentes listados abaixo também serão removidos por CASCADE. Registros protegidos impedem a exclusão. Esta operação não pode ser desfeita.</p>
+<ul>{{ deleted_objects|unordered_list }}</ul>
+<form method="post" action="">{% csrf_token %}
+  <input type="hidden" name="action" value="{{ action_name }}">
+  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ usuario.pk }}">
+  <input type="hidden" name="index" value="0">
+  <label for="confirm_hard_delete">Digite <strong>EXCLUIR DEFINITIVAMENTE</strong> para confirmar:</label>
+  <input id="confirm_hard_delete" type="text" name="confirm_hard_delete" autocomplete="off" required>
+  <button type="submit" name="submit" value="yes" class="deletelink">Excluir definitivamente</button>
+  <a href="{% url 'admin:accounts_user_changelist' %}">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,7 +1,12 @@
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.contrib.admin.utils import get_deleted_objects
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models.deletion import ProtectedError, RestrictedError
+from django.template.response import TemplateResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
@@ -208,8 +213,8 @@ class GroupPermissionAdmin(admin.ModelAdmin):
 class UserAdmin(DjangoUserAdmin):
     model = User
 
-    # All user deletions are logical. Never invoke queryset.delete() or user.delete().
-    actions = ["soft_delete_users", "reactivate_users"]
+    # Exclusao padrao = soft delete. Excecao explicita, apenas no Admin: hard delete.
+    actions = ["soft_delete_users", "reactivate_users", "hard_delete_user"]
 
     def _eligible_users(self, request, queryset):
         # Protect current account and superusers from accidental deactivation.
@@ -263,6 +268,56 @@ class UserAdmin(DjangoUserAdmin):
             raise PermissionDenied
         count = self._eligible_users(request, queryset).filter(is_active=False).update(is_active=True)
         self.message_user(request, f"{count} usuário(s) reativado(s).", messages.SUCCESS)
+
+    @admin.action(description="EXCLUIR DEFINITIVAMENTE um usuario (irreversivel)")
+    def hard_delete_user(self, request, queryset):
+        # Restrito ao Django Admin, superusuario, unico alvo, jamais propria conta.
+        if not request.user.is_active or not request.user.is_superuser or not self.has_delete_permission(request):
+            raise PermissionDenied
+        if queryset.count() != 1:
+            self.message_user(request, "Selecione exatamente um usuario para exclusao definitiva.", messages.ERROR)
+            return None
+
+        target = queryset.first()
+        if target.pk == request.user.pk or target.is_superuser or target.is_staff:
+            self.message_user(request, "Nao e permitido excluir definitivamente a propria conta ou contas administrativas.", messages.ERROR)
+            return None
+
+        # Usa o coletor real de exclusao do Django, nao a simulacao do soft delete.
+        deleted_objects, model_count, perms_needed, protected = get_deleted_objects(
+            [target], request, self.admin_site
+        )
+        if protected or perms_needed:
+            self.message_user(
+                request,
+                "Exclusao bloqueada: existem relacionamentos protegidos ou permissoes insuficientes. "
+                "Use a desativacao (soft delete).",
+                messages.ERROR,
+            )
+            return None
+
+        if request.POST.get("confirm_hard_delete") == "EXCLUIR DEFINITIVAMENTE":
+            try:
+                with transaction.atomic():
+                    # A exclusao em cascata ocorre apenas para relacionamentos CASCADE.
+                    target.delete()
+            except (ProtectedError, RestrictedError):
+                self.message_user(request, "Exclusao bloqueada por registros vinculados.", messages.ERROR)
+                return None
+            self.message_user(request, f"Usuario {target.username} excluido definitivamente.", messages.SUCCESS)
+            return None
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Confirmar exclusao definitiva de usuario",
+            "opts": self.model._meta,
+            "usuario": target,
+            "deleted_objects": deleted_objects,
+            "model_count": model_count,
+            "action_checkbox_name": ACTION_CHECKBOX_NAME,
+            "action_name": "hard_delete_user",
+        }
+        return TemplateResponse(request, "admin/accounts/user/confirm_hard_delete.html", context)
 
     list_display = [
         "id",
