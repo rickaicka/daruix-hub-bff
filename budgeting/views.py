@@ -22,6 +22,7 @@ from .models import (
     BudgetSheetStageItem,
     BudgetStageCatalog,
     MaterialGroup,
+    ServiceCompositionGroup,
     UnitMeasure,
 )
 from .pagination import (
@@ -51,6 +52,7 @@ from .serializers import (
     GrupoMaterialSerializer,
     ItemReorderSerializer,
     ServiceCompositionReadSerializer,
+    ServiceCompositionGroupSerializer,
     StageReorderSerializer,
     ServiceCompositionWriteSerializer,
     SupplyAutocompleteSerializer,
@@ -1459,6 +1461,38 @@ class SupplyViewSet(
         )
 
 
+class ServiceCompositionGroupViewSet(FilteredViewSetMixin, viewsets.ModelViewSet):
+    queryset = ServiceCompositionGroup.objects.select_related("parent").all()
+    serializer_class = ServiceCompositionGroupSerializer
+    pagination_class = None
+    search_fields = ("code", "name")
+    ordering_fields = ("code", "name", "updated_at")
+    ordering = ("code", "name", "id")
+    filterset_fields = ("parent", "is_active")
+
+    def perform_destroy(self, instance):
+        if instance.children.filter(is_active=True).exists():
+            raise ValidationError({"detail": "Desative primeiro os subgrupos ativos."})
+        if instance.compositions.filter(is_active=True).exists():
+            raise ValidationError({"detail": "Reclassifique primeiro as composições ativas."})
+        instance.is_active = False
+        instance.save(update_fields=("is_active", "updated_at"))
+
+    @action(detail=False, methods=("get",), url_path="tree")
+    def tree(self, request):
+        groups = list(self.filter_queryset(self.get_queryset().filter(is_active=True)))
+        nodes = {g.pk: {"id": g.pk, "code": g.code, "name": g.name,
+                        "parent": g.parent_id, "children": []} for g in groups}
+        roots = []
+        for group in groups:
+            node = nodes[group.pk]
+            if group.parent_id in nodes:
+                nodes[group.parent_id]["children"].append(node)
+            else:
+                roots.append(node)
+        return Response(roots)
+
+
 class ServiceCompositionViewSet(
     LegacyProtectedSoftDeleteMixin,
     FilteredViewSetMixin,
@@ -1492,6 +1526,7 @@ class ServiceCompositionViewSet(
     filterset_fields = (
         "origin",
         "is_active",
+        "group",
     )
 
     def get_queryset(self):
@@ -1525,6 +1560,21 @@ class ServiceCompositionViewSet(
             self.action,
             ServiceCompositionReadSerializer,
         )
+
+    @action(detail=True, methods=("patch",), url_path="classify")
+    def classify(self, request, pk=None):
+        composition = self.get_object()
+        group_id = request.data.get("group", None)
+        if group_id is None:
+            group = None
+        else:
+            try:
+                group = ServiceCompositionGroup.objects.get(pk=group_id, is_active=True)
+            except (ServiceCompositionGroup.DoesNotExist, ValueError, TypeError):
+                raise ValidationError({"group": "Grupo inválido ou inativo."})
+        composition.group = group
+        composition.save(update_fields=("group", "updated_at"))
+        return Response(self.get_serializer(composition).data)
 
     @action(
         detail=True,

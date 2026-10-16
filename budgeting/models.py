@@ -1054,7 +1054,53 @@ class BudgetSheetStageItem(models.Model):
             f"{self.order}. {self.description_snapshot}"
         )
 
+class ServiceCompositionGroup(models.Model):
+    code = models.CharField(max_length=80, db_index=True)
+    name = models.CharField(max_length=255)
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="children",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "budgeting_service_composition_group"
+        ordering = ("code", "name", "id")
+        constraints = [
+            models.UniqueConstraint(fields=("parent", "code"),
+                                    condition=Q(parent__isnull=False),
+                                    name="uq_comp_group_child_code"),
+            models.UniqueConstraint(fields=("code",),
+                                    condition=Q(parent__isnull=True),
+                                    name="uq_comp_group_root_code"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.parent_id is None:
+            return
+        ancestor_id = self.parent_id
+        visited = {self.pk} if self.pk else set()
+        while ancestor_id is not None:
+            if ancestor_id in visited:
+                raise ValidationError({"parent": "A hierarquia não pode conter ciclos."})
+            visited.add(ancestor_id)
+            ancestor = type(self).objects.filter(pk=ancestor_id).values("parent_id", "is_active").first()
+            if ancestor is None or not ancestor["is_active"]:
+                raise ValidationError({"parent": "O grupo pai deve estar ativo."})
+            ancestor_id = ancestor["parent_id"]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+
 class ServiceComposition(models.Model):
+    group = models.ForeignKey(
+        ServiceCompositionGroup, null=True, blank=True, on_delete=models.PROTECT,
+        related_name="compositions",
+    )
     origin = models.CharField(
         max_length=10,
         choices=DataOrigin.choices,

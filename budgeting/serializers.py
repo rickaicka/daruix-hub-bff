@@ -20,6 +20,7 @@ from .models import (
     BudgetStageCatalog,
     MaterialGroup,
     ServiceComposition,
+    ServiceCompositionGroup,
     ServiceCompositionItem,
     ServiceCompositionVersion,
     Supply,
@@ -267,7 +268,27 @@ class CompositionVersionSerializer(serializers.ModelSerializer):
         )
 
 
+class ServiceCompositionGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceCompositionGroup
+        fields = ("id", "code", "name", "parent", "is_active", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate(self, attrs):
+        obj = self.instance or ServiceCompositionGroup()
+        for field in ("code", "name", "parent", "is_active"):
+            if field in attrs:
+                setattr(obj, field, attrs[field])
+        try:
+            obj.clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages)
+        return attrs
+
+
 class ServiceCompositionReadSerializer(serializers.ModelSerializer):
+    group_code = serializers.CharField(source="group.code", read_only=True, allow_null=True)
+    group_name = serializers.CharField(source="group.name", read_only=True, allow_null=True)
     latest_version = serializers.SerializerMethodField()
 
     class Meta:
@@ -278,6 +299,9 @@ class ServiceCompositionReadSerializer(serializers.ModelSerializer):
             "legacy_id",
             "code",
             "name",
+            "group",
+            "group_code",
+            "group_name",
             "is_active",
             "latest_version",
             "created_at",
@@ -297,6 +321,7 @@ class ServiceCompositionReadSerializer(serializers.ModelSerializer):
 
 
 class ServiceCompositionWriteSerializer(serializers.ModelSerializer):
+    group = serializers.PrimaryKeyRelatedField(queryset=ServiceCompositionGroup.objects.filter(is_active=True), required=False, allow_null=True)
     unit = serializers.CharField(
         max_length=30,
         allow_blank=True,
@@ -310,6 +335,7 @@ class ServiceCompositionWriteSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "name",
+            "group",
             "is_active",
             "unit",
             "items",

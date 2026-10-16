@@ -4,6 +4,7 @@ from .views import (
     BudgetSheetViewSet,
     BudgetStageCatalogViewSet,
     MaterialGroupViewSet,
+    ServiceCompositionGroupViewSet,
     ServiceCompositionViewSet,
     SupplyTypeViewSet,
     SupplyViewSet,
@@ -28,6 +29,11 @@ router.register(
     "supplies",
     SupplyViewSet,
     basename="supply",
+)
+router.register(
+    "composition-groups",
+    ServiceCompositionGroupViewSet,
+    basename="composition-group",
 )
 router.register(
     "service-compositions",

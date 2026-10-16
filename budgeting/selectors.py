@@ -40,7 +40,7 @@ def service_composition_queryset() -> QuerySet[ServiceComposition]:
         )
     )[:1]
 
-    return ServiceComposition.objects.prefetch_related(
+    return ServiceComposition.objects.select_related("group").prefetch_related(
         Prefetch(
             "versions",
             queryset=latest_version,
