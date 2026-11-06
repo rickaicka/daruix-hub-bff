@@ -56,4 +56,5 @@ router.register(
     basename="supply-type",
 )
 
+
 urlpatterns = router.urls

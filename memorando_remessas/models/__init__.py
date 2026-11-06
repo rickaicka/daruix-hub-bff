@@ -38,3 +38,4 @@ __all__ = [
     "ShipmentMemoStatus",
     "WorkSource",
 ]
+from memorando_remessas.models.nota_fiscal import ShipmentMemoInvoice

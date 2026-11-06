@@ -343,16 +343,6 @@ def _validate_ready_to_send(
             "A data da remessa deve ser informada."
         )
 
-    if not shipment_memo.subject.strip():
-        errors["subject"] = (
-            "O assunto deve ser informado."
-        )
-
-    if not shipment_memo.attention_to.strip():
-        errors["attention_to"] = (
-            "O campo 'Aos cuidados de' deve ser informado."
-        )
-
     if not shipment_memo.recipient_emails:
         errors["recipient_emails"] = (
             "Informe pelo menos um e-mail destinatário."

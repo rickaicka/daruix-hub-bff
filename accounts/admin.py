@@ -688,6 +688,7 @@ class HubMenuItemAdmin(admin.ModelAdmin):
 
     search_fields = [
         "name",
+        "descricao",
         "slug",
         "route",
         "module__name",

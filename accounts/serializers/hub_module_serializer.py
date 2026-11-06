@@ -32,6 +32,7 @@ def _get_visible_children(menu_item, user):
 
 class HubMenuItemSerializer(serializers.ModelSerializer):
     nome = serializers.CharField(source="name", read_only=True)
+    descricao = serializers.CharField(read_only=True)
     rota = serializers.CharField(source="route", read_only=True)
     icone = serializers.CharField(source="icon", read_only=True)
     cor_icone = serializers.CharField(source="module.icon_color", read_only=True)
@@ -47,6 +48,7 @@ class HubMenuItemSerializer(serializers.ModelSerializer):
         fields = [
             "slug",
             "nome",
+            "descricao",
             "rota",
             "icone",
             "cor_icone",

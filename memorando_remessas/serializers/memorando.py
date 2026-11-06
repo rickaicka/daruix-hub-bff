@@ -1,12 +1,10 @@
+from memorando_remessas.serializers.nota_fiscal import InvoiceSerializer
 from rest_framework import serializers
 
 from memorando_remessas.models import (
     ShipmentMemo,
     ShipmentMemoHistory,
     ShipmentMemoResponsible,
-)
-from memorando_remessas.serializers.arquivo import (
-    ShipmentMemoFileSerializer,
 )
 from memorando_remessas.serializers.formulario import (
     ShipmentMemoOptionSerializer,
@@ -96,6 +94,13 @@ class ShipmentMemoListSerializer(serializers.ModelSerializer):
 
 
 class ShipmentMemoSerializer(serializers.ModelSerializer):
+    invoices = InvoiceSerializer(many=True, read_only=True)
+    # Campos legados: mantidos para compatibilidade com memorandos antigos,
+    # mas não exigidos pelo fluxo atual de notas fiscais.
+    subject = serializers.CharField(required=False, allow_blank=True, default="", max_length=255)
+    attention_to = serializers.CharField(required=False, allow_blank=True, default="", max_length=180)
+    notes = serializers.CharField(required=False, allow_blank=True, default="", allow_null=False)
+
     legacy_work_id = serializers.IntegerField(
         min_value=1,
         required=True,
@@ -147,12 +152,6 @@ class ShipmentMemoSerializer(serializers.ModelSerializer):
 
     selected_options = ShipmentMemoOptionSerializer(
         source="options",
-        many=True,
-        read_only=True,
-    )
-
-    attachments = ShipmentMemoFileSerializer(
-        source="files",
         many=True,
         read_only=True,
     )
@@ -212,7 +211,9 @@ class ShipmentMemoSerializer(serializers.ModelSerializer):
             "responsible_users",
             "option_ids",
             "selected_options",
-            "attachments",
+            "invoices",
+            "received_by_name",
+            "received_at",
             "created_by",
             "created_by_name",
             "updated_by",

@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "commercial.apps.CommercialConfig",
     "budgeting.apps.BudgetingConfig",
     "memorando_remessas.apps.MemorandoRemessasConfig",
+    "material_requisitions.apps.MaterialRequisitionsConfig",
 ]
 
 

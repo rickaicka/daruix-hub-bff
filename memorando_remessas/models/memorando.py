@@ -10,6 +10,9 @@ from memorando_remessas.models.choices import (
 
 
 class ShipmentMemo(models.Model):
+    received_by_name = models.CharField(max_length=180, blank=True, default='')
+    received_at = models.DateField(null=True, blank=True)
+
     id = models.BigAutoField(
         primary_key=True,
         db_column="id_memorando",

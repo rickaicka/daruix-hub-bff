@@ -27,3 +27,4 @@ __all__ = [
     "UserSession",
     "UserType",
 ]
+from accounts.models.hub_notification import HubNotification

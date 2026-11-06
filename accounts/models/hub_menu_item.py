@@ -28,6 +28,13 @@ class HubMenuItem(models.Model):
         verbose_name="Nome",
     )
 
+    descricao = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Descrição da página",
+        help_text="Texto opcional exibido abaixo do título da funcionalidade no Hub Shell.",
+    )
+
     slug = models.SlugField(
         max_length=140,
         unique=True,

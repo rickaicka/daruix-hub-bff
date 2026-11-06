@@ -1,3 +1,4 @@
+from django.urls import include, path
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -7,6 +8,7 @@ from drf_spectacular.views import (
 )
 
 urlpatterns = [
+    path("api/material-requisitions/", include("material_requisitions.urls")),
     path("admin/", admin.site.urls),
     path("api/", include("accounts.urls")),
     path("api/commercial/", include("commercial.urls")),

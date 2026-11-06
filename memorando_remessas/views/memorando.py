@@ -1,5 +1,11 @@
-﻿from django.db.models import Prefetch
-from django.http import FileResponse, Http404
+from django.http import HttpResponse
+from django.db import transaction
+from memorando_remessas.models.nota_fiscal import ShipmentMemoInvoice
+from memorando_remessas.serializers.nota_fiscal import InvoiceSerializer, InvoiceBatchSerializer
+from memorando_remessas.services.nota_fiscal_reader import read_invoice
+from memorando_remessas.services.memorando_pdf_service import generate_shipment_memo_pdf
+from django.db.models import Prefetch
+from defusedxml import ElementTree as ET
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -24,7 +30,6 @@ from rest_framework.viewsets import ModelViewSet
 from memorando_remessas.filters import ShipmentMemoFilter
 from memorando_remessas.models import (
     ShipmentMemo,
-    ShipmentMemoFile,
     ShipmentMemoOption,
     ShipmentMemoResponsible,
 )
@@ -41,8 +46,6 @@ from memorando_remessas.permissions import (
 )
 from memorando_remessas.serializers import (
     ShipmentMemoCancelSerializer,
-    ShipmentMemoFileSerializer,
-    ShipmentMemoFileUploadSerializer,
     ShipmentMemoHistorySerializer,
     ShipmentMemoListSerializer,
     ShipmentMemoRevisionSerializer,
@@ -50,11 +53,9 @@ from memorando_remessas.serializers import (
     ShipmentMemoSerializer,
 )
 from memorando_remessas.services import (
-    add_shipment_memo_file,
     cancel_shipment_memo,
     create_shipment_memo_revision,
     delete_shipment_memo,
-    delete_shipment_memo_file,
     send_shipment_memo,
 )
 
@@ -151,17 +152,6 @@ class ShipmentMemoViewSet(ModelViewSet):
             )
         )
 
-        file_queryset = (
-            ShipmentMemoFile.objects
-            .select_related(
-                "uploaded_by",
-            )
-            .order_by(
-                "-created_at",
-                "-id",
-            )
-        )
-
         return (
             ShipmentMemo.objects
             .select_related(
@@ -179,10 +169,6 @@ class ShipmentMemoViewSet(ModelViewSet):
                 Prefetch(
                     "options",
                     queryset=option_queryset,
-                ),
-                Prefetch(
-                    "files",
-                    queryset=file_queryset,
                 ),
             )
             .all()
@@ -205,18 +191,6 @@ class ShipmentMemoViewSet(ModelViewSet):
         if self.action == "history":
             return ShipmentMemoHistorySerializer
 
-        if self.action == "files":
-            if self.request.method == "POST":
-                return ShipmentMemoFileUploadSerializer
-
-            return ShipmentMemoFileSerializer
-
-        if self.action in [
-            "delete_file",
-            "download_file",
-        ]:
-            return ShipmentMemoFileSerializer
-
         return ShipmentMemoSerializer
 
     def get_permissions(self):
@@ -225,14 +199,17 @@ class ShipmentMemoViewSet(ModelViewSet):
         ]
 
         if self.action in [
+            "print_memo", "invoice_items",
             "list",
             "retrieve",
             "history",
-            "download_file",
         ]:
             permission_classes.append(
                 HasShipmentMemoViewPermission
             )
+
+        elif self.action == "read_invoice_file":
+            permission_classes.append(HasShipmentMemoCreatePermission)
 
         elif self.action == "create":
             permission_classes.append(
@@ -268,25 +245,48 @@ class ShipmentMemoViewSet(ModelViewSet):
                 HasShipmentMemoCreatePermission,
             ])
 
-        elif self.action == "files":
-            if self.request.method == "POST":
-                permission_classes.append(
-                    HasShipmentMemoUpdatePermission
-                )
-            else:
-                permission_classes.append(
-                    HasShipmentMemoViewPermission
-                )
-
-        elif self.action == "delete_file":
-            permission_classes.append(
-                HasShipmentMemoUpdatePermission
-            )
-
+        if self.action == 'invoice_items' and self.request.method == 'PUT':
+            permission_classes.append(HasShipmentMemoUpdatePermission)
         return [
             permission_class()
             for permission_class in permission_classes
         ]
+
+    @action(detail=False, methods=['post'], url_path='ler-nota', parser_classes=[MultiPartParser])
+    def read_invoice_file(self, request):
+        upload = request.FILES.get('file')
+        if upload is None or upload.size > 10 * 1024 * 1024:
+            return Response({'detail':'Arquivo obrigatório, máximo 10 MB.'}, status=400)
+        try:
+            data = read_invoice(upload)
+            return Response(data)
+        except (ValueError, ET.ParseError) as exc:
+            return Response({'detail':str(exc)}, status=400)
+        except RuntimeError as exc:
+            return Response({'detail':str(exc)}, status=503)
+
+    @action(detail=True, methods=['get', 'put'], url_path='notas')
+    def invoice_items(self, request, pk=None):
+        memo = self.get_object()
+        if request.method == 'GET':
+            return Response(InvoiceSerializer(memo.invoices.all(), many=True).data)
+        if memo.status not in ('RASCUNHO', 'FALHA_ENVIO'):
+            return Response({'detail':'Somente rascunhos podem ter notas alteradas.'}, status=409)
+        serializer = InvoiceBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            memo.invoices.all().delete()
+            for item in serializer.validated_data['invoices']:
+                ShipmentMemoInvoice.objects.create(memo=memo, **item)
+        return Response(InvoiceSerializer(memo.invoices.all(), many=True).data)
+
+    @action(detail=True, methods=['get'], url_path='imprimir')
+    def print_memo(self, request, pk=None):
+        memo = self.get_object()
+        content = generate_shipment_memo_pdf(shipment_memo=memo)
+        response = HttpResponse(content, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{memo.code or "memorando"}.pdf"'
+        return response
 
     def perform_destroy(self, instance):
         delete_shipment_memo(
@@ -503,244 +503,3 @@ class ShipmentMemoViewSet(ModelViewSet):
             serializer.data,
             status=status.HTTP_200_OK,
         )
-
-    @extend_schema(
-        methods=["GET"],
-        tags=["memorando-remessas/memorandos"],
-        summary="Listar arquivos do memorando",
-        description=(
-            "Lista os arquivos anexados ao memorando."
-        ),
-        responses={
-            200: ShipmentMemoFileSerializer(
-                many=True,
-            ),
-        },
-    )
-    @extend_schema(
-        methods=["POST"],
-        tags=["memorando-remessas/memorandos"],
-        summary="Adicionar arquivo ao memorando",
-        description=(
-            "Adiciona um arquivo a um memorando em RASCUNHO. "
-            "A requisiÃ§Ã£o deve usar multipart/form-data."
-        ),
-        request=ShipmentMemoFileUploadSerializer,
-        responses={
-            201: ShipmentMemoFileSerializer,
-        },
-    )
-    @action(
-        detail=True,
-        methods=[
-            "get",
-            "post",
-        ],
-        url_path="arquivos",
-        url_name="arquivos",
-        parser_classes=[
-            MultiPartParser,
-            FormParser,
-        ],
-    )
-    def files(
-        self,
-        request,
-        pk=None,
-    ):
-        shipment_memo = self.get_object()
-
-        if request.method == "GET":
-            files = (
-                shipment_memo.files
-                .select_related(
-                    "uploaded_by",
-                )
-                .order_by(
-                    "-created_at",
-                    "-id",
-                )
-            )
-
-            serializer = ShipmentMemoFileSerializer(
-                files,
-                many=True,
-                context=self.get_serializer_context(),
-            )
-
-            return Response(
-                serializer.data,
-                status=status.HTTP_200_OK,
-            )
-
-        input_serializer = ShipmentMemoFileUploadSerializer(
-            data=request.data,
-            context=self.get_serializer_context(),
-        )
-
-        input_serializer.is_valid(
-            raise_exception=True,
-        )
-
-        shipment_file = add_shipment_memo_file(
-            shipment_memo=shipment_memo,
-            uploaded_file=(
-                input_serializer
-                .validated_data["file"]
-            ),
-            user=request.user,
-        )
-
-        serializer = ShipmentMemoFileSerializer(
-            shipment_file,
-            context=self.get_serializer_context(),
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED,
-        )
-
-    @extend_schema(
-        tags=["memorando-remessas/memorandos"],
-        summary="Remover arquivo do memorando",
-        description=(
-            "Remove um arquivo de um memorando em RASCUNHO."
-        ),
-        responses={
-            204: OpenApiResponse(
-                description="Arquivo removido.",
-            ),
-            404: OpenApiResponse(
-                description="Arquivo nÃ£o encontrado.",
-            ),
-        },
-    )
-    @action(
-        detail=True,
-        methods=["delete"],
-        url_path=(
-            r"arquivos/"
-            r"(?P<file_id>\d+)"
-        ),
-        url_name="delete-file",
-    )
-    def delete_file(
-        self,
-        request,
-        pk=None,
-        file_id=None,
-    ):
-        shipment_memo = self.get_object()
-
-        shipment_file = (
-            shipment_memo.files
-            .filter(
-                pk=file_id,
-            )
-            .first()
-        )
-
-        if not shipment_file:
-            raise Http404(
-                "Arquivo nÃ£o encontrado."
-            )
-
-        delete_shipment_memo_file(
-            shipment_memo=shipment_memo,
-            shipment_file=shipment_file,
-            user=request.user,
-        )
-
-        return Response(
-            status=status.HTTP_204_NO_CONTENT,
-        )
-
-    @extend_schema(
-        tags=["memorando-remessas/memorandos"],
-        summary="Baixar arquivo do memorando",
-        description=(
-            "Baixa um arquivo anexado ao memorando."
-        ),
-        responses={
-            200: OpenApiResponse(
-                response=OpenApiTypes.BINARY,
-                description="ConteÃºdo binÃ¡rio do arquivo.",
-            ),
-            404: OpenApiResponse(
-                description="Arquivo nÃ£o encontrado.",
-            ),
-        },
-    )
-    @action(
-        detail=True,
-        methods=["get"],
-        url_path=(
-            r"arquivos/"
-            r"(?P<file_id>\d+)/"
-            r"download"
-        ),
-        url_name="download-file",
-    )
-    def download_file(
-        self,
-        request,
-        pk=None,
-        file_id=None,
-    ):
-        shipment_memo = self.get_object()
-
-        shipment_file = (
-            shipment_memo.files
-            .filter(
-                pk=file_id,
-            )
-            .first()
-        )
-
-        if not shipment_file:
-            raise Http404(
-                "Arquivo nÃ£o encontrado."
-            )
-
-        if not shipment_file.file:
-            raise Http404(
-                "Arquivo fÃ­sico nÃ£o encontrado."
-            )
-
-        storage = shipment_file.file.storage
-        stored_file_name = shipment_file.file.name
-
-        if not stored_file_name:
-            raise Http404(
-                "Arquivo fÃ­sico nÃ£o encontrado."
-            )
-
-        if not storage.exists(
-            stored_file_name
-        ):
-            raise Http404(
-                "Arquivo fÃ­sico nÃ£o encontrado."
-            )
-
-        try:
-            file_handle = storage.open(
-                stored_file_name,
-                mode="rb",
-            )
-        except OSError as error:
-            raise Http404(
-                "NÃ£o foi possÃ­vel abrir o arquivo."
-            ) from error
-
-        return FileResponse(
-            file_handle,
-            as_attachment=True,
-            filename=shipment_file.original_name,
-            content_type=(
-                shipment_file.content_type
-                or "application/octet-stream"
-            ),
-        )
-
-
