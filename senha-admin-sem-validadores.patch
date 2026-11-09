@@ -1,0 +1,31 @@
+--- a/accounts/admin.py
++++ b/accounts/admin.py
+@@ -3,6 +3,7 @@
+ from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+ from django.contrib.admin.utils import get_deleted_objects
+ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
++from django.contrib.auth.forms import AdminPasswordChangeForm
+ from django.core.exceptions import PermissionDenied
+ from django.db import transaction
+ from django.db.models.deletion import ProtectedError, RestrictedError
+@@ -209,9 +210,20 @@
+     permission_module.short_description = "Módulo"
+ 
+ 
++class HubAdminPasswordChangeForm(AdminPasswordChangeForm):
++    def __init__(self, user, *args, **kwargs):
++        super().__init__(user, *args, **kwargs)
++        self.fields["password1"].help_text = ""
++
++    def validate_password_for_user(self, user, **kwargs):
++        # Keep the inherited password confirmation without strength checks.
++        return None
++
++
+ @admin.register(User)
+ class UserAdmin(DjangoUserAdmin):
+     model = User
++    change_password_form = HubAdminPasswordChangeForm
+ 
+     # Exclusao padrao = soft delete. Excecao explicita, apenas no Admin: hard delete.
+     actions = ["soft_delete_users", "reactivate_users", "hard_delete_user"]
