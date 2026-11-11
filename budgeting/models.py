@@ -2,6 +2,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Max, Q
 
@@ -822,6 +823,14 @@ class BudgetSheetStageItem(models.Model):
         max_digits=18, decimal_places=2, default=Decimal("0"),
         verbose_name="Desconto unitário (R$)",
     )
+    subtotal_override = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Total fixo da linha",
+    )
     subtotal = models.DecimalField(
         max_digits=24,
         decimal_places=4,
@@ -1000,6 +1009,14 @@ class BudgetSheetStageItem(models.Model):
         if errors:
             raise ValidationError(errors)
 
+    def calculate_subtotal(self, unit_price: Decimal) -> Decimal:
+        if self.subtotal_override is not None:
+            return Decimal(str(self.subtotal_override))
+        return (Decimal(str(self.quantity or 0)) * unit_price).quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP,
+        )
+
     def save(self, *args, **kwargs):
         # Revisões precisam copiar o snapshot financeiro literalmente. Nesse
         # fluxo, subtotal e pricing_factor já pertencem à revisão de origem e
@@ -1029,10 +1046,7 @@ class BudgetSheetStageItem(models.Model):
             # unit_price é um snapshot de exibição/persistência com 4 casas.
             # O recálculo oficial da planilha usa custo x fator BDI com precisão
             # completa e só arredonda o subtotal da linha para centavos.
-            self.subtotal = (quantity * unit_price).quantize(
-                Decimal("0.01"),
-                rounding=ROUND_HALF_UP,
-            )
+            self.subtotal = self.calculate_subtotal(unit_price)
 
             if unit_cost > 0:
                 self.pricing_factor = (

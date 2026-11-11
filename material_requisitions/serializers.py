@@ -4,7 +4,9 @@ from rest_framework import serializers
 from material_requisitions.models import (MaterialRequisitionRevision as Revision,
     MaterialRequisitionSection as Section, MaterialRequisitionItem as Item,
     MaterialRequisitionEvent as Event, RMStatus as Status)
-from material_requisitions.services.requisitions import privileged, can_decide_rm
+from material_requisitions.services.requisitions import (
+    privileged, can_decide_rm, section_quantity_limits, item_quantity_limit,
+)
 
 
 class StrictSerializer(serializers.Serializer):
@@ -75,18 +77,71 @@ class ItemWrite(ItemFields):
 
 
 class ItemRead(serializers.ModelSerializer):
+    max_quantity = serializers.CharField(read_only=True, allow_null=True)
+
     class Meta:
         model = Item
         fields = ['id', 'lineage', 'supply', 'description', 'unit', 'supply_type', 'quantity', 'period',
-                  'period_unit', 'notes', 'source_path', 'position']
+                  'period_unit', 'notes', 'source_path', 'position', 'max_quantity']
 
 
 class SectionRead(serializers.ModelSerializer):
     items = ItemRead(many=True, read_only=True)
+    composition_tree = serializers.SerializerMethodField()
+
+    def to_representation(self, section):
+        data = super().to_representation(section)
+        if any(item['source_path'] for item in data['items']):
+            limits = section_quantity_limits(section)
+            for item in data['items']:
+                limit = item_quantity_limit(section, limits, item['source_path'], item['supply'])
+                item['max_quantity'] = format(limit, 'f') if limit is not None else None
+        data['composition_labels'] = {
+            path: node['description'] for path, node in data['composition_tree'].items()
+            if path.count('.') == 1
+        }
+        return data
+
+    def get_composition_tree(self, section):
+        if not section.source_stage_id:
+            return {}
+        source_ids = set()
+        required_paths = set()
+        for item in section.items.all():
+            parts = item.source_path.split('.')
+            if len(parts) < 2 or parts[0] != 'po' or not parts[1].isascii() or not parts[1].isdecimal():
+                continue
+            source_ids.add(int(parts[1]))
+            required_paths.update('.'.join(parts[:end]) for end in range(2, len(parts) + 1))
+        if not source_ids:
+            return {}
+        stage = section.source_stage
+        tree = {}
+        for source in stage.items.filter(pk__in=source_ids):
+            root = f'po.{source.pk}'
+            snapshot = source.composition_snapshot or {}
+            number = f'{stage.order}.{source.order}'
+            tree[root] = {
+                'description': source.description_snapshot, 'unit': source.unit_snapshot,
+                'number': number, 'customized': bool(snapshot.get('customized')),
+            }
+            if source.item_type != 'SERVICE_COMPOSITION':
+                continue
+            for component in snapshot.get('items', []):
+                suffix = component.get('source_path')
+                path = f'{root}.{suffix}'
+                if path in required_paths and (component.get('display_only') or
+                                               component.get('item_type') == 'SUBCOMPOSITION'):
+                    tree[path] = {
+                        'description': component.get('description_snapshot', ''),
+                        'unit': component.get('unit_snapshot', ''), 'number': f'{number}.{suffix}',
+                    }
+        return tree
+
     class Meta:
         model = Section
         fields = ['id', 'source_stage', 'source_composition', 'stage_name', 'description',
-                  'unit', 'position', 'composition_snapshot', 'items']
+                  'unit', 'position', 'composition_snapshot', 'items', 'composition_tree']
 
 
 class RevisionRead(serializers.ModelSerializer):
@@ -137,6 +192,9 @@ class EventRead(serializers.ModelSerializer):
 
 
 class LoadCompositionWrite(VersionWrite):
+    source_paths = serializers.ListField(
+        child=serializers.CharField(max_length=255), required=False, allow_empty=False,
+    )
     recalculate = serializers.BooleanField(default=False)
     multiplier = serializers.DecimalField(max_digits=18, decimal_places=6, min_value=Decimal('0.000001'))
     period = serializers.IntegerField(min_value=1, required=False, allow_null=True)
@@ -153,3 +211,4 @@ class SectionSupplyRead(serializers.Serializer):
     unit = serializers.CharField()
     supply_type = serializers.CharField()
     source_path = serializers.CharField()
+    max_quantity = serializers.CharField()

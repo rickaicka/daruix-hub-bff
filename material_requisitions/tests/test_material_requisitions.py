@@ -231,10 +231,12 @@ class OperationalRMTests(TestCase):
         rev, _ = self.create()
         rev = self.post(rev, 'sections', {'source_stage': self.stage.pk, 'description': 'Descrição geral livre'})
         original = deepcopy(self.source.composition_snapshot)
-        result = self.post(rev, f"sections/{rev['sections'][0]['id']}/load-composition", {'multiplier': '3'})
+        path = f"sections/{rev['sections'][0]['id']}/load-composition"
+        self.post(rev, path, {'multiplier': '1.5'}, expected=400)
+        result = self.post(rev, path, {'multiplier': '1'})
         self.assertEqual(result['composition_load_report']['added'], 1)
         self.assertEqual(len(result['composition_load_report']['skipped']), 1)
-        self.assertEqual(Decimal(result['sections'][0]['items'][0]['quantity']), Decimal('6'))
+        self.assertEqual(Decimal(result['sections'][0]['items'][0]['quantity']), Decimal('2'))
         self.source.refresh_from_db()
         self.assertEqual(self.source.composition_snapshot, original)
 
@@ -242,23 +244,24 @@ class OperationalRMTests(TestCase):
         rev, _ = self.create()
         rev = self.post(rev, 'sections', {'source_stage': self.stage.pk, 'description': 'Teste'})
         path = f"sections/{rev['sections'][0]['id']}/load-composition"
-        first = self.post(rev, path, {'multiplier': '3'})
+        first = self.post(rev, path, {'multiplier': '1'})
         original = first['sections'][0]['items'][0]
-        self.assertEqual(Decimal(original['quantity']), Decimal('6'))
+        self.assertEqual(Decimal(original['quantity']), Decimal('2'))
         self.post(first, path, {'multiplier': '2'}, expected=409)
-        second = self.post(first, path, {'multiplier': '2', 'recalculate': True})
+        self.post(first, path, {'multiplier': '2', 'recalculate': True}, expected=400)
+        second = self.post(first, path, {'multiplier': '0.5', 'recalculate': True})
         updated = second['sections'][0]['items'][0]
         self.assertEqual(updated['id'], original['id'])
-        self.assertEqual(Decimal(updated['quantity']), Decimal('4'))
+        self.assertEqual(Decimal(updated['quantity']), Decimal('1'))
         self.assertEqual(second['composition_load_report']['updated'], 1)
         self.assertEqual(second['composition_load_report']['added'], 0)
-        third = self.post(second, path, {'multiplier': '3', 'recalculate': True})
-        self.assertEqual(Decimal(third['sections'][0]['items'][0]['quantity']), Decimal('6'))
+        third = self.post(second, path, {'multiplier': '1', 'recalculate': True})
+        self.assertEqual(Decimal(third['sections'][0]['items'][0]['quantity']), Decimal('2'))
         self.assertEqual(len(third['sections'][0]['items']), 1)
         events = MaterialRequisitionEvent.objects.filter(revision_id=third['id'], action='RECALCULATE_COMPOSITION')
         self.assertEqual(events.count(), 2)
-        self.assertEqual(events.first().payload['changes'][0]['before'], '6.000000')
-        self.assertEqual(events.first().payload['changes'][0]['after'], '4.000000')
+        self.assertEqual(events.first().payload['changes'][0]['before'], '2.000000')
+        self.assertEqual(events.first().payload['changes'][0]['after'], '1.000000')
 
     def test_recalculate_does_not_touch_items_without_po_origin(self):
         rev, _ = self.create()
@@ -272,7 +275,7 @@ class OperationalRMTests(TestCase):
             supply_type='MATERIAL', description='Item manual', unit='UN',
             quantity=Decimal('7'), position=2, source_path='')
         recalculated = self.post(rev, f'sections/{section_id}/load-composition',
-                                 {'multiplier': '2', 'recalculate': True})
+                                 {'multiplier': '0.5', 'recalculate': True})
         manual.refresh_from_db()
         self.assertEqual(manual.quantity, Decimal('7'))
         self.assertEqual(len(recalculated['sections'][0]['items']), 2)
@@ -353,7 +356,7 @@ class OperationalRMTests(TestCase):
         rev = self.ready()
         section = rev['sections'][0]['id']
         first = rev['sections'][0]['items'][0]['id']
-        rev = self.post(rev, f'sections/{section}/items', {'supply': self.supply.pk, 'quantity': '3'})
+        rev = self.post(rev, f'sections/{section}/items', {'supply': self.supply.pk, 'quantity': '1'})
         second = rev['sections'][0]['items'][1]['id']
         self.post(rev, f'sections/{section}/reorder-items', {'order': [first, first]}, expected=400)
         reordered = self.post(rev, f'sections/{section}/reorder-items', {'order': [second, first]})
@@ -456,6 +459,29 @@ class OperationalRMTests(TestCase):
         row = next(row for row in result.data['results'] if row['id'] == direct.pk)
         rev = self.post(rev, f'sections/{section}/items', {'supply': direct.pk, 'quantity': '2', 'source_path': row['source_path']})
         self.assertEqual(rev['sections'][0]['items'][0]['description'], 'Areia da etapa')
+
+    def test_quantity_cannot_exceed_po_in_insert_or_edit(self):
+        BudgetSheetStageItem.objects.filter(pk=self.source.pk).update(quantity=Decimal('0.5'))
+        rev, _ = self.create()
+        rev = self.post(rev, 'sections', {'source_stage': self.stage.pk, 'description': 'Limite PO'})
+        section = rev['sections'][0]['id']
+        action = f'sections/{section}/items'
+        failure = self.post(rev, action, {'supply': self.supply.pk, 'quantity': '1.000001'}, expected=400)
+        self.assertIn('quantity', failure)
+        rev = self.post(rev, action, {'supply': self.supply.pk, 'quantity': '1'})
+        item = rev['sections'][0]['items'][0]
+        self.assertEqual(Decimal(item['max_quantity']), Decimal('1'))
+        endpoint = f"{self.base}{rev['id']}/items/{item['id']}/"
+        failure = self.client.patch(endpoint, {
+            'expected_version': rev['version'], 'quantity': '2',
+        }, format='json')
+        self.assertEqual(failure.status_code, 400)
+        self.assertIn('quantity', failure.data)
+        updated = self.client.patch(endpoint, {
+            'expected_version': rev['version'], 'quantity': '0.75',
+        }, format='json')
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertEqual(Decimal(updated.data['sections'][0]['items'][0]['quantity']), Decimal('0.75'))
 
     def test_supplies_skip_disabled_ancestors_duplicates_and_inactive_catalog(self):
         snapshot = deepcopy(self.source.composition_snapshot)

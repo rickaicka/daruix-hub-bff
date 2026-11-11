@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Case, F, IntegerField, Max, Q, Value, When
+from django.db.models import Case, Exists, F, IntegerField, Max, OuterRef, Q, Value, When
 from django.http import HttpResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -13,6 +13,8 @@ from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+
+from commercial.models import Proposal
 
 from .api_utils import raise_api_validation_error
 from .choices import BudgetSheetStatus, DataOrigin, SupplyType
@@ -192,6 +194,38 @@ class BudgetSheetViewSet(
                 "stages__items__supply",
             )
         )
+
+    @action(
+        detail=False,
+        methods=("get",),
+        url_path="finalized-proposals",
+    )
+    def finalized_proposals(self, request):
+        term = request.query_params.get("search", "").strip()
+        finalized_sheets = BudgetSheet.objects.filter(
+            proposal_id=OuterRef("pk"),
+            status=BudgetSheetStatus.FINALIZED,
+        )
+        proposals = Proposal.objects.filter(Exists(finalized_sheets)).select_related("party")
+        if term:
+            proposals = proposals.filter(
+                Q(code__icontains=term)
+                | Q(party__legal_name__icontains=term)
+                | Q(party__trade_name__icontains=term)
+                | Q(work_name__icontains=term)
+            )
+
+        page = self.paginate_queryset(proposals.order_by("code", "pk"))
+        results = [
+            {
+                "id": proposal.pk,
+                "code": proposal.code,
+                "client": {"name": str(proposal.party)} if proposal.party_id else None,
+                "work": {"name": proposal.work_name} if proposal.work_name else None,
+            }
+            for proposal in page
+        ]
+        return self.get_paginated_response(results)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -1108,7 +1142,10 @@ class BudgetSheetViewSet(
 
         if request.method == "DELETE":
             self._ensure_editable(budget_sheet)
-            delete_stage_item(item)
+            try:
+                delete_stage_item(item)
+            except DjangoValidationError as error:
+                raise_api_validation_error(error)
 
             return Response(
                 status=status.HTTP_204_NO_CONTENT,

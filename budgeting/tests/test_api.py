@@ -507,6 +507,36 @@ class BudgetSheetApiTests(TestCase):
 
         return budget_sheet, sheet_stage, item
 
+    def test_finalized_proposals_filters_before_pagination(self):
+        draft_only = Proposal.objects.create(
+            origin=CatalogOrigin.LEGACY,
+            legacy_id=2001,
+            legacy_key="r" * 64,
+            code="PC25034",
+            party=self.party,
+            entry_date=date(2026, 9, 1),
+        )
+        BudgetSheet.objects.create(proposal=draft_only)
+        BudgetSheet.objects.create(proposal=self.proposal)
+        for _ in range(2):
+            BudgetSheet.objects.create(
+                proposal=self.proposal,
+                status=BudgetSheetStatus.FINALIZED,
+            )
+
+        view = BudgetSheetViewSet.as_view({"get": "finalized_proposals"})
+        for term in ("PC2503", "Cliente Teste", "Obra Teste"):
+            with self.subTest(term=term):
+                request = self._authenticate(self.factory.get(
+                    "/api/budgeting/budget-sheets/finalized-proposals/",
+                    {"search": term, "page_size": 1},
+                ))
+                response = view(request)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["count"], 1)
+                self.assertIsNone(response.data["next"])
+                self.assertEqual(response.data["results"][0]["id"], self.proposal.pk)
+
     def test_creates_budget_from_proposal(self):
         request = self._authenticate(
             self.factory.post(

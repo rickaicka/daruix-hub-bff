@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from budgeting.choices import BudgetSheetItemType, SupplyType
+from budgeting.choices import BudgetSheetItemType
 from budgeting.models import BudgetSheet, BudgetSheetStageItem
 from budgeting.services.budget_sheets import ensure_budget_sheet_editable
 
@@ -1155,12 +1155,11 @@ def budget_sheet_direct_cost_breakdown(sheet: BudgetSheet) -> dict[str, Decimal]
         "material_unit_cost",
         "labor_unit_cost",
         "equipment_unit_cost",
-        "supply__supply_type",
     )
 
     for item in items:
         quantity = Decimal(item["quantity"] or 0)
-        if item["item_type"] == BudgetSheetItemType.SERVICE_COMPOSITION:
+        if item["item_type"] in (BudgetSheetItemType.SERVICE_COMPOSITION, BudgetSheetItemType.SUPPLY):
             line_total = _money2(quantity * Decimal(item["unit_cost"] or 0))
             line_material = _money2(
                 quantity
@@ -1175,12 +1174,7 @@ def budget_sheet_direct_cost_breakdown(sheet: BudgetSheet) -> dict[str, Decimal]
             material += line_material
             labor += line_labor
         else:
-            base = item["unit_cost"] if item["item_type"] == BudgetSheetItemType.SUPPLY else item["unit_price"]
-            line_total = _money2(quantity * Decimal(base or 0))
-            if item.get("supply__supply_type") == SupplyType.LABOR:
-                labor += line_total
-            else:
-                material += line_total
+            material += _money2(quantity * Decimal(item["unit_price"] or 0))
 
     material = _money2(material)
     labor = _money2(labor)

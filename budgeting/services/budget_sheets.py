@@ -1135,10 +1135,7 @@ def recalculate_budget_totals(
                 discount,
             )
             expected_unit_price = money4(precise_unit_price)
-            expected_subtotal = money(
-                Decimal(item.quantity or 0)
-                * precise_unit_price
-            )
+            expected_subtotal = item.calculate_subtotal(precise_unit_price)
             expected_factor = (
                 money4(precise_unit_price / item.unit_cost)
                 if item.unit_cost and item.unit_cost > 0
@@ -1207,11 +1204,15 @@ def delete_stage_item(item: BudgetSheetStageItem) -> None:
         BudgetSheetStageItem.objects
         .select_for_update()
         .select_related("budget_sheet_stage")
-        .get(
+        .filter(
             pk=item.pk,
             budget_sheet_stage__budget_sheet=locked_sheet,
         )
+        .first()
     )
+    if locked_item is None:
+        return
+
     stage = locked_item.budget_sheet_stage
     removed_order = locked_item.order
     locked_item.delete()
@@ -1230,8 +1231,10 @@ def delete_stage_item(item: BudgetSheetStageItem) -> None:
     # Isso evita colisao temporaria com a constraint unica
     # (budget_sheet_stage, order) do PostgreSQL.
     for following_item in following_items:
-        following_item.order -= 1
-        following_item.save(update_fields=("order",))
+        # A mudança de posição independe da validação financeira da linha.
+        BudgetSheetStageItem.objects.filter(pk=following_item.pk).update(
+            order=following_item.order - 1,
+        )
 
     recalculate_budget_totals(locked_sheet.pk)
 
@@ -1565,6 +1568,7 @@ def generate_budget_revision(
                 composition_snapshot=item.composition_snapshot,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
+                subtotal_override=item.subtotal_override,
                 subtotal=item.subtotal,
                 order=item.order,
                 notes=item.notes,

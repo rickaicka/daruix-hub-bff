@@ -237,9 +237,31 @@ def section_stage_snapshot(section):
     snapshot = section.composition_snapshot
     if snapshot.get('scope') == 'stage' and snapshot.get('stage_id') == section.source_stage_id:
         return snapshot
-    # Seções históricas eram vinculadas a uma composição: consulta a etapa inteira da PO
+    # Etapas históricas eram vinculadas a uma composição: consulta a etapa inteira da PO
     # congelada, sem reescrever sua descrição, snapshot ou itens já gravados.
     return stage_snapshot(section.source_stage)
+
+
+def section_quantity_limits(section):
+    return {
+        (row['source_path'], row['supply_id']): Decimal(str(row['coefficient']))
+        for row in section_stage_snapshot(section).get('items', [])
+        if row.get('supply_id') and row.get('source_path')
+    }
+
+
+def item_quantity_limit(section, limits, source_path, supply_id):
+    if source_path and not source_path.startswith('po.') and section.source_composition_id:
+        source_path = f'po.{section.source_composition_id}.{source_path}'
+    return limits.get((source_path, supply_id))
+
+
+def _validate_quantity_limit(quantity, limit):
+    if limit is None:
+        raise ValidationError({'quantity': 'Não foi possível identificar a quantidade deste item na PO de origem.'})
+    if quantity > limit:
+        maximum = format(limit.normalize(), 'f')
+        raise ValidationError({'quantity': f'A quantidade máxima deste item na PO é {maximum.replace(".", ",")}.'})
 
 
 def section_supply_options(section, rev, search=''):
@@ -256,7 +278,7 @@ def section_supply_options(section, rev, search=''):
         description = row.get('description_snapshot') or supply.description
         result.setdefault(supply.pk, {'id': supply.pk, 'description': description,
             'unit': row.get('unit_snapshot') or supply.unit, 'supply_type': supply.supply_type,
-            'source_path': row['source_path']})
+            'source_path': row['source_path'], 'max_quantity': str(row['coefficient'])})
     matches = [value for value in result.values() if not term or term in value['description'].casefold()
                or term in supplies[value['id']].description.casefold()]
     return sorted(matches, key=lambda value: (value['description'].casefold(), value['id']))
@@ -271,7 +293,7 @@ def add_section(pk, expected, user, source_stage, description):
     if not description or len(description) > 500:
         raise ValidationError({'description': 'Informe uma descrição geral com até 500 caracteres.'})
     if Section.objects.filter(revision=rev, source_stage=stage, description=description).exists():
-        raise ValidationError('Já existe uma seção com esta etapa e descrição geral.')
+        raise ValidationError('Já existe uma etapa da RM com a mesma origem e descrição geral.')
     position = (rev.sections.aggregate(n=Max('position'))['n'] or 0) + 1
     section = Section.objects.create(revision=rev, source_stage=stage, source_composition=None,
         stage_name=stage.name_snapshot, description=description, unit='',
@@ -333,6 +355,7 @@ def add_item(pk, expected, user, section_id, data):
         notes=data.get('notes', ''), source_path=source_path,
         position=(section.items.aggregate(n=Max('position'))['n'] or 0) + 1)
     _validate_item(rev, item)
+    _validate_quantity_limit(item.quantity, Decimal(option['max_quantity']))
     item.full_clean()
     item.save()
     _bump(rev, user, 'ADD_ITEM', payload=_item_snapshot(item))
@@ -351,6 +374,10 @@ def change_item(pk, expected, user, item_id, data=None):
     for key, value in data.items():
         setattr(item, key, _quantity(value) if key == 'quantity' else value)
     _validate_item(rev, item)
+    if item.source_path:
+        _validate_quantity_limit(item.quantity, item_quantity_limit(
+            item.section, section_quantity_limits(item.section), item.source_path, item.supply_id,
+        ))
     item.full_clean()
     item.save()
     return _bump(rev, user, 'UPDATE_ITEM', payload={'before': before, 'after': _item_snapshot(item)})
@@ -361,19 +388,30 @@ def remove_section(pk, expected, user, section_id):
     _, rev = _lock(pk, expected)
     _editable(rev, user)
     section = Section.objects.get(pk=section_id, revision=rev)
-    if section.items.exists():
-        raise ValidationError('Remova os itens antes de excluir a seção.')
+    stage_items = section.items.all()
+    items = [_item_snapshot(item) for item in stage_items]
+    stage_items.delete()
     section.delete()
-    return _bump(rev, user, 'DELETE_SECTION', payload={'section': section_id})
+    return _bump(rev, user, 'DELETE_SECTION', payload={
+        'section': int(section_id),
+        'description': section.description,
+        'items': items,
+    })
 
 
-def _ready(rev):
+def _ready(rev, *, check_quantity_limits=True):
     _validate_header(rev)
     sections = list(rev.sections.all())
     if not sections or any(not s.items.exists() for s in sections):
-        raise ValidationError('Preencha pelo menos uma composição e um item em cada seção.')
-    for item in Item.objects.filter(section__revision=rev).select_related('supply'):
-        _validate_item(rev, item)
+        raise ValidationError('Adicione pelo menos uma etapa e inclua um item em cada etapa.')
+    for section in sections:
+        limits = section_quantity_limits(section) if check_quantity_limits else {}
+        for item in section.items.select_related('supply'):
+            _validate_item(rev, item)
+            if check_quantity_limits and item.source_path:
+                _validate_quantity_limit(item.quantity, item_quantity_limit(
+                    section, limits, item.source_path, item.supply_id,
+                ))
 
 
 @transaction.atomic
@@ -393,7 +431,7 @@ def decide(pk, expected, user, action, reason=''):
             raise Conflict('A decisão exige RM aguardando aprovação.')
         if action == 'reject' and not reason:
             raise ValidationError('Informe o motivo da reprovação.')
-        _ready(rev)
+        _ready(rev, check_quantity_limits=action == 'approve')
         rev.status = Status.APPROVED if action == 'approve' else Status.REJECTED
         if action == 'approve':
             root.approved_revision = rev
@@ -418,17 +456,31 @@ def new_revision(pk, expected, user, reason):
 
 
 @transaction.atomic
-def load_composition(pk, expected, user, section_id, multiplier, period=None, period_unit='', recalculate=False):
+def load_composition(
+    pk, expected, user, section_id, multiplier, period=None, period_unit='',
+    recalculate=False, source_paths=None,
+):
     _, rev = _lock(pk, expected)
     _editable(rev, user)
     section = Section.objects.get(pk=section_id, revision=rev)
+    rows = section.composition_snapshot.get('items', [])
+    limits = section_quantity_limits(section)
+    factor = _quantity(multiplier)
+    by_path = {row.get('source_path'): row for row in rows}
     linked_items = list(section.items.exclude(source_path='').order_by('pk'))
+    if source_paths is not None:
+        selected_paths = set(source_paths)
+        if not selected_paths or len(selected_paths) != len(source_paths):
+            raise ValidationError({'source_paths': 'Selecione componentes sem duplicar.'})
+        if selected_paths.difference(by_path):
+            raise ValidationError({'source_paths': 'Há componentes que não pertencem a esta etapa.'})
+        rows = [row for row in rows if row.get('source_path') in selected_paths]
+        linked_items = [item for item in linked_items if item.source_path in selected_paths]
+
     if linked_items and not recalculate:
-        raise Conflict('Esta seção já possui itens vinculados à PO. Confirme o recálculo para atualizar suas quantidades.')
+        raise Conflict('Confirme o recálculo para atualizar as quantidades dos itens vinculados à PO.')
     if recalculate and not linked_items:
         raise ValidationError('Não há itens vinculados à PO para recalcular.')
-    rows = section.composition_snapshot.get('items', [])
-    by_path = {x.get('source_path'): x for x in rows}
     supplies = Supply.objects.in_bulk([x.get('supply_id') for x in rows if x.get('supply_id')])
     objects, skipped = [], []
     candidates = {}
@@ -439,6 +491,8 @@ def load_composition(pk, expected, user, section_id, multiplier, period=None, pe
         reason = None
         supply = supplies.get(row.get('supply_id'))
         if row.get('display_only'):
+            if source_paths is not None:
+                skipped.append({'source_path': path, 'reason': 'display_only'})
             continue
         if not row.get('enabled', True) or any(not by_path.get('.'.join(parts[:i]), {}).get('enabled', True)
                                               for i in range(1, len(parts))):
@@ -452,25 +506,30 @@ def load_composition(pk, expected, user, section_id, multiplier, period=None, pe
         if reason:
             skipped.append({'source_path': path, 'reason': reason})
             continue
+        quantity = Decimal(str(row['coefficient'])) * factor
+        _validate_quantity_limit(quantity, item_quantity_limit(section, limits, path, supply.pk))
         pos += 1
         item = Item(section=section, supply=supply, supply_type=supply.supply_type,
             description=row.get('description_snapshot') or supply.description,
             unit=row.get('unit_snapshot') or supply.unit,
-            quantity=_quantity(Decimal(str(row.get('coefficient', 0))) * _quantity(multiplier)),
+            quantity=_quantity(quantity),
             period=period, period_unit=period_unit, source_path=path, position=pos)
         _validate_item(rev, item)
         item.full_clean()
         objects.append(item)
         candidates[path] = item
+    changes = []
     if recalculate:
-        # Nunca inserir, excluir ou recriar linhas no modo recálculo.
-        # Se a origem congelada não corresponde aos vínculos, abortar tudo.
-        existing_paths = [item.source_path for item in linked_items]
-        if len(set(existing_paths)) != len(existing_paths) or set(existing_paths) != set(candidates):
+        existing_paths = {item.source_path for item in linked_items}
+        if len(existing_paths) != len(linked_items) or (
+            source_paths is None and existing_paths != candidates.keys()
+        ):
             raise Conflict('Os itens vinculados diferem da origem congelada. Recalcule manualmente ou revise os vínculos.')
-        changes = []
+        updated_items = []
         for current in linked_items:
-            calculated = candidates[current.source_path]
+            calculated = candidates.pop(current.source_path, None)
+            if calculated is None:
+                continue
             if current.supply_id != calculated.supply_id:
                 raise Conflict('Um componente vinculado não corresponde mais ao insumo da PO de origem.')
             before = str(current.quantity)
@@ -479,20 +538,25 @@ def load_composition(pk, expected, user, section_id, multiplier, period=None, pe
                 current.period, current.period_unit = calculated.period, calculated.period_unit
             _validate_item(rev, current)
             current.full_clean()
+            updated_items.append(current)
             changes.append({'id': current.pk, 'source_path': current.source_path,
                             'before': before, 'after': str(current.quantity)})
-        Item.objects.bulk_update(linked_items, ['quantity', 'period', 'period_unit'] if rev.is_rental else ['quantity'])
-        _bump(rev, user, 'RECALCULATE_COMPOSITION', payload={
-            'section': section.pk, 'multiplier': str(multiplier), 'updated': len(changes),
-            'changes': changes, 'skipped': skipped})
-        return rev, {'added': 0, 'updated': len(changes), 'skipped': skipped}
-    if not objects:
-        raise ValidationError({'components': 'Não há itens requisitáveis compatíveis na seção.', 'skipped': skipped})
-    Item.objects.bulk_create(objects)
-    _bump(rev, user, 'LOAD_COMPOSITION', payload={'section': section.pk,
-        'multiplier': str(multiplier), 'added': len(objects), 'skipped': skipped,
-        'items': [_item_snapshot(i) for i in objects]})
-    return rev, {'added': len(objects), 'skipped': skipped}
+        if updated_items:
+            fields = ['quantity', 'period', 'period_unit'] if rev.is_rental else ['quantity']
+            Item.objects.bulk_update(updated_items, fields)
+        objects = list(candidates.values())
+
+    if not objects and not changes:
+        raise ValidationError({'components': 'Não há itens requisitáveis compatíveis na seleção.', 'skipped': skipped})
+    if objects:
+        Item.objects.bulk_create(objects)
+    report = {'added': len(objects), 'updated': len(changes), 'skipped': skipped}
+    action = 'RECALCULATE_COMPOSITION' if changes else 'LOAD_COMPOSITION'
+    _bump(rev, user, action, payload={
+        'section': section.pk, 'multiplier': str(multiplier), **report,
+        'changes': changes, 'items': [_item_snapshot(item) for item in objects],
+    })
+    return rev, report
 
 
 @transaction.atomic

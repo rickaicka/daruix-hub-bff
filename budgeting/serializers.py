@@ -490,6 +490,7 @@ class BudgetSheetStageItemReadSerializer(serializers.ModelSerializer):
             "quantity",
             "unit_price",
             "unit_discount",
+            "subtotal_override",
             "subtotal",
             "order",
             "notes",
@@ -680,6 +681,14 @@ class BudgetSheetStageWriteSerializer(serializers.ModelSerializer):
 class BudgetSheetStageItemSerializer(
     serializers.ModelSerializer
 ):
+    material_cost_input = serializers.DecimalField(
+        max_digits=18, decimal_places=4, min_value=Decimal("0"),
+        required=False, write_only=True,
+    )
+    labor_cost_input = serializers.DecimalField(
+        max_digits=18, decimal_places=4, min_value=Decimal("0"),
+        required=False, write_only=True,
+    )
     order = serializers.IntegerField(
         min_value=1,
         required=False,
@@ -726,12 +735,15 @@ class BudgetSheetStageItemSerializer(
             "quantity",
             "unit_price",
             "unit_discount",
+            "subtotal_override",
             "subtotal",
             "order",
             "notes",
             "composition_version_number",
             "material_unit_cost",
             "labor_unit_cost",
+            "material_cost_input",
+            "labor_cost_input",
             "equipment_unit_cost",
             "unit_cost",
             "pricing_factor",
@@ -804,6 +816,11 @@ class BudgetSheetStageItemSerializer(
         )
 
         errors = {}
+        if item_type != BudgetSheetItemType.SUPPLY:
+            for field in ("material_cost_input", "labor_cost_input"):
+                if field in attrs:
+                    errors[field] = "Este campo é editável em itens diretos."
+
         discount = attrs.get("unit_discount", self.instance.unit_discount if self.instance else Decimal("0"))
         if discount < 0:
             errors["unit_discount"] = "O desconto não pode ser negativo."
@@ -1014,15 +1031,31 @@ class BudgetSheetStageItemSerializer(
                 validated_data["pricing_factor"] = 0
                 validated_data["composition_snapshot"] = {}
 
-            # Para insumos diretos, unit_price no payload representa o custo
-            # informado. No retorno ele é o preço de venda recalculado.
-            # PATCH somente de BDI/quantidade preserva a base anterior.
-            base = Decimal(validated_data.get(
-                "unit_price", instance.unit_cost if instance else 0,
-            ))
+            if "material_cost_input" in validated_data or "labor_cost_input" in validated_data:
+                material = validated_data.pop(
+                    "material_cost_input",
+                    0 if reference_changed else instance.material_unit_cost,
+                )
+                labor = validated_data.pop(
+                    "labor_cost_input",
+                    0 if reference_changed else instance.labor_unit_cost,
+                )
+            elif reference_changed or "unit_price" in validated_data:
+                # Clientes anteriores enviam apenas unit_price como custo base.
+                base = validated_data.get("unit_price", Decimal("0"))
+                is_labor = supply and supply.supply_type == SupplyType.LABOR
+                material = 0 if is_labor else base
+                labor = base if is_labor else 0
+            else:
+                # Alterar quantidade ou BDI preserva a divisão salva.
+                material = instance.material_unit_cost
+                labor = instance.labor_unit_cost
+
+            base = material + labor
+            validated_data["unit_price"] = base
             validated_data["unit_cost"] = base
-            validated_data["material_unit_cost"] = base if supply and supply.supply_type != SupplyType.LABOR else 0
-            validated_data["labor_unit_cost"] = base if supply and supply.supply_type == SupplyType.LABOR else 0
+            validated_data["material_unit_cost"] = material
+            validated_data["labor_unit_cost"] = labor
             validated_data["equipment_unit_cost"] = 0
 
         elif item_type == BudgetSheetItemType.FREE_TEXT:
