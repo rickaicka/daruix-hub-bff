@@ -219,6 +219,14 @@ class Command(BaseCommand):
         mapping = {}
         mappings[section] = mapping
         source_keys = set()
+        # As chaves de catálogo HUB são heurísticas. Registros com a mesma
+        # chave podem ser legítimos e referenciados por composições distintas.
+        can_have_hub_duplicates = section in {"insumos", "composicoes"}
+        hub_key_counts = Counter(
+            identity(section, data, None) for data in rows.values()
+            if can_have_hub_duplicates and data["legacy_id"] is None
+        )
+        target_key_counts = {key: len(objects) for key, objects in target.items()}
         source_occurrences = Counter()
         changes = []
         creates = []
@@ -238,11 +246,26 @@ class Command(BaseCommand):
                         raise CommandError(f"{section} #{source_pk}: referência ausente em {field}.")
                     data[field] = related_pk
             key = identity(section, data, source_occurrences)
-            if key in source_keys or len(target[key]) > 1:
-                raise CommandError(f"{section} #{source_pk}: identidade ambígua {key!r}.")
-            source_keys.add(key)
+            candidates = target[key]
+            if can_have_hub_duplicates and raw["legacy_id"] is None:
+                raw_key = identity(section, raw, None)
+                if hub_key_counts[raw_key] > 1 or target_key_counts.get(key, 0) > 1:
+                    obj = next(
+                        (candidate for candidate in candidates if row_data(candidate) == data),
+                        None,
+                    )
+                    if obj is not None:
+                        candidates.remove(obj)
+                    counts["chave HUB repetida"] += 1
+                else:
+                    obj = candidates[0] if candidates else None
+            else:
+                if key in source_keys or len(candidates) > 1:
+                    raise CommandError(f"{section} #{source_pk}: identidade ambígua {key!r}.")
+                source_keys.add(key)
+                obj = candidates[0] if candidates else None
 
-            if not target[key]:
+            if obj is None:
                 obj = model(**data)
                 if section == "grupos_composicao":
                     # O ID do grupo é necessário antes de importar seus filhos.
@@ -253,7 +276,6 @@ class Command(BaseCommand):
                 counts["criados"] += 1
                 continue
 
-            obj = target[key][0]
             mapping[source_pk] = obj.pk
             if row_data(obj) == data:
                 counts["iguais"] += 1

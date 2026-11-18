@@ -77,6 +77,8 @@ class MaterialRequisitionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixi
                         raise ValidationError({field: 'Informe um número inteiro.'})
                     query = query.filter(**{lookup: value})
             search = self.request.query_params.get('search', '').strip()
+            if search.upper().startswith('RM-PC'):
+                search = 'RM' + search[5:]
             if search:
                 query = query.filter(Q(requisition__number__icontains=search) |
                     Q(requisition__proposal__code__icontains=search))

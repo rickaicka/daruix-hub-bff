@@ -8,6 +8,7 @@ from drf_spectacular.views import (
 )
 
 urlpatterns = [
+    path("api/quotation-maps/", include("quotation_maps.urls")),
     path("api/material-requisitions/", include("material_requisitions.urls")),
     path("admin/", admin.site.urls),
     path("api/", include("accounts.urls")),

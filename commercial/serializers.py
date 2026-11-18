@@ -684,7 +684,45 @@ class ProposalWorkAutocompleteSerializer(serializers.ModelSerializer):
         return str(obj.work_address)
 
 
+
+
+class ProposalCommercialGroupSerializer(serializers.Serializer):
+    """Grupo validado de endereço/identificação para uma PC específica."""
+    legal_name = serializers.CharField(max_length=180, allow_blank=True, required=False)
+    document = serializers.CharField(max_length=20, allow_blank=True, required=False)
+    state_registration = serializers.CharField(max_length=35, allow_blank=True, required=False)
+    address = serializers.CharField(max_length=250, allow_blank=True, required=False)
+    postal_code = serializers.CharField(max_length=10, allow_blank=True, required=False)
+    district = serializers.CharField(max_length=120, allow_blank=True, required=False)
+    city = serializers.CharField(max_length=120, allow_blank=True, required=False)
+    state = serializers.CharField(max_length=2, allow_blank=True, required=False)
+    email = serializers.EmailField(allow_blank=True, required=False)
+    phone = serializers.CharField(max_length=32, allow_blank=True, required=False)
+    contact = serializers.CharField(max_length=180, allow_blank=True, required=False)
+    reference = serializers.CharField(max_length=500, allow_blank=True, required=False)
+
+
+class ProposalWorkTaxSerializer(serializers.Serializer):
+    cno = serializers.CharField(max_length=35, allow_blank=True, required=False)
+    municipal_registration = serializers.CharField(max_length=80, allow_blank=True, required=False)
+
+
+class ProposalCommercialInstructionsSerializer(serializers.Serializer):
+    billing = serializers.CharField(max_length=3000, allow_blank=True, required=False)
+    collection = serializers.CharField(max_length=3000, allow_blank=True, required=False)
+    delivery = serializers.CharField(max_length=3000, allow_blank=True, required=False)
+    other = serializers.CharField(max_length=3000, allow_blank=True, required=False)
+
+
+class ProposalCommercialDetailsSerializer(serializers.Serializer):
+    billing = ProposalCommercialGroupSerializer(required=False)
+    collection = ProposalCommercialGroupSerializer(required=False)
+    delivery = ProposalCommercialGroupSerializer(required=False)
+    work_tax = ProposalWorkTaxSerializer(required=False)
+    instructions = ProposalCommercialInstructionsSerializer(required=False)
+
 class ProposalSerializer(serializers.ModelSerializer):
+    commercial_details = ProposalCommercialDetailsSerializer(required=False)
     code = serializers.CharField(required=False, allow_blank=True)
 
     client = serializers.SerializerMethodField()
@@ -864,6 +902,7 @@ class ProposalSerializer(serializers.ModelSerializer):
             "legacy_id",
             "legacy_key",
             "legacy_payload",
+            "commercial_details",
             "created_at",
             "updated_at",
         )

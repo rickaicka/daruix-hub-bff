@@ -1,0 +1,7 @@
+def make_order_code(pc_code: str, sequence: int) -> str:
+    """Código exclusivo do Hub; nunca assumir que é número oficial da OC legada."""
+    if not pc_code.startswith("PC") or not pc_code[2:].isdigit():
+        raise ValueError("Código PC inválido para numeração de OC.")
+    if sequence < 1:
+        raise ValueError("A sequência da OC deve ser positiva.")
+    return f"HOC{pc_code[2:]}-{sequence:03d}"

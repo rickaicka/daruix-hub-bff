@@ -1,0 +1,124 @@
+diff --git a/quotation_maps/composition_paths.py b/quotation_maps/composition_paths.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/composition_paths.py
+@@ -0,0 +1,54 @@
++from budgeting.models import BudgetSheetStageItem
++from material_requisitions.models import MaterialRequisitionItem
++
++
++def composition_paths(quotation):
++    """Recover display ancestors from the approved RM and the frozen budget sheet."""
++    items = MaterialRequisitionItem.objects.filter(
++        pk__in=[item["id"] for item in quotation.items],
++        section__revision_id=quotation.approved_revision_id,
++    ).exclude(source_path="").values_list(
++        "pk", "section_id", "section__source_stage_id",
++        "section__source_composition_id", "source_path",
++    )
++    origins = {}
++    for item_id, section_id, stage_id, legacy_source, path in items:
++        parts = path.split(".")
++        if parts[0] == "po":
++            if len(parts) < 3 or not parts[1].isdigit():
++                continue
++            source_id, parts = int(parts[1]), parts[2:]
++        else:
++            source_id = legacy_source
++        if source_id and all(part.isdigit() for part in parts):
++            origins[item_id] = (section_id, stage_id, source_id, parts)
++
++    if not origins:
++        return {}
++
++    sources = BudgetSheetStageItem.objects.filter(
++        pk__in={origin[2] for origin in origins.values()},
++        item_type="SERVICE_COMPOSITION",
++    ).only("budget_sheet_stage_id", "description_snapshot", "composition_snapshot")
++    compositions = {
++        source.pk: (source, {
++            str(row.get("source_path")): row["description_snapshot"]
++            for row in source.composition_snapshot.get("items", [])
++            if row.get("item_type") == "SUBCOMPOSITION" and row.get("description_snapshot")
++        })
++        for source in sources
++    }
++    result = {}
++    for item_id, (section_id, stage_id, source_id, parts) in origins.items():
++        entry = compositions.get(source_id)
++        if entry is None or entry[0].budget_sheet_stage_id != stage_id:
++            continue
++        source, subcompositions = entry
++        root = f"{section_id}:{source_id}"
++        path = [{"key": root, "label": source.description_snapshot or "Serviço composto"}]
++        for index in range(1, len(parts)):
++            prefix = ".".join(parts[:index])
++            if label := subcompositions.get(prefix):
++                path.append({"key": f"{root}:{prefix}", "label": label})
++        result[item_id] = path
++    return result
+diff --git a/quotation_maps/serializers.py b/quotation_maps/serializers.py
+--- a/quotation_maps/serializers.py
++++ b/quotation_maps/serializers.py
+@@ -1,5 +1,6 @@
+ from rest_framework import serializers
+ 
++from .composition_paths import composition_paths
+ from .models import PurchaseOrder, QuotationMap, Supplier
+ 
+ 
+@@ -29,10 +30,19 @@
+ 
+ 
+ class MapRead(MapSummary):
++    items = serializers.SerializerMethodField()
+     orders = OrderRead(many=True, read_only=True)
+ 
+     class Meta(MapSummary.Meta):
+         fields = MapSummary.Meta.fields + ("version", "items", "quotes", "notes", "orders", "tender_opened_at", "tender_closed_at", "tender_deadline")
++
++
++    def get_items(self, quotation):
++        paths = composition_paths(quotation)
++        return [
++            {**item, "composition_path": paths[item["id"]]} if item["id"] in paths else item
++            for item in quotation.items
++        ]
+ 
+ 
+ class VersionWrite(serializers.Serializer):
+diff --git a/material_requisitions/tests/test_material_requisitions.py b/material_requisitions/tests/test_material_requisitions.py
+--- a/material_requisitions/tests/test_material_requisitions.py
++++ b/material_requisitions/tests/test_material_requisitions.py
+@@ -66,6 +66,31 @@
+         rev = self.post(rev, 'sections', {'source_stage': self.stage.pk, 'description': 'Descrição geral livre'})
+         return self.post(rev, f"sections/{rev['sections'][0]['id']}/items", {'supply': self.supply.pk, 'quantity': '2'})
+ 
++    def test_quotation_detail_recovers_composition_hierarchy_for_existing_snapshot(self):
++        from quotation_maps.models import QuotationMap
++
++        snapshot = deepcopy(self.source.composition_snapshot)
++        snapshot["items"][0]["source_path"] = "3.1"
++        snapshot["items"].append({
++            "source_path": "3", "item_type": "SUBCOMPOSITION",
++            "description_snapshot": "Subcomposição", "display_only": True,
++        })
++        BudgetSheetStageItem.objects.filter(pk=self.source.pk).update(composition_snapshot=snapshot)
++        rev = self.post(self.ready(), 'submit')
++        permission = Permission.objects.get(code='quotation_map.manage')
++        GroupPermission.objects.create(group=self.director.group, permission=permission)
++        self.client.force_authenticate(self.director)
++        self.post(rev, 'approve')
++
++        quotation = QuotationMap.objects.get(approved_revision_id=rev['id'])
++        response = self.client.get(f'/api/quotation-maps/{quotation.pk}/')
++        self.assertEqual(response.status_code, 200, response.data)
++        item = response.data['items'][0]
++        self.assertEqual([node['label'] for node in item['composition_path']], ['Composição', 'Subcomposição'])
++        self.assertEqual(item['id'], quotation.items[0]['id'])
++        self.assertEqual(item['quantity'], quotation.items[0]['quantity'])
++        self.assertNotIn('composition_path', quotation.items[0])
++
+     def test_approved_rm_yields_one_quotation_and_orders_only_for_selected_suppliers(self):
+         from accounts.models import HubNotification
+         from material_requisitions.models import MaterialRequisitionItem

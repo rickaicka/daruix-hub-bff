@@ -173,7 +173,7 @@ def create(user, data):
             raise Conflict('A última PO finalizada do PC mudou. Recarregue o contexto antes de criar a RM.')
     sequence = (Root.objects.filter(proposal=proposal).aggregate(n=Max('sequence'))['n'] or 0) + 1
     root = Root.objects.create(proposal=proposal, sequence=sequence, requester=user,
-        number=f'RM-{proposal.code}-{sequence:03}', creation_key=data['creation_key'], creation_hash=digest)
+        number=f'RM{proposal.code.removeprefix("PC")}-{sequence:03d}', creation_key=data['creation_key'], creation_hash=digest)
     rev = Revision(requisition=root, budget_sheet=sheet, owner=user,
         reference_date=data['reference_date'], delivery_date=data.get('delivery_date'),
         request_type=data.get('request_type', 0), notes=data.get('notes', ''),
@@ -447,7 +447,16 @@ def decide(pk, expected, user, action, reason=''):
         rev.status = Status.CANCELLED
     else:
         raise ValidationError('Ação inválida.')
-    return _bump(rev, user, action.upper(), reason)
+    rev = _bump(rev, user, action.upper(), reason)
+    if action == 'approve':
+        from quotation_maps.services import create_for_approval, notify_ready
+        quotation, created = create_for_approval(rev)
+        if created:
+            transaction.on_commit(lambda: notify_ready(quotation.pk, user.pk), robust=True)
+    elif action == 'cancel':
+        from quotation_maps.services import cancel_for_rm
+        cancel_for_rm(root)
+    return rev
 
 
 def new_revision(pk, expected, user, reason):

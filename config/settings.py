@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -53,6 +54,7 @@ INSTALLED_APPS = [
     "budgeting.apps.BudgetingConfig",
     "memorando_remessas.apps.MemorandoRemessasConfig",
     "material_requisitions.apps.MaterialRequisitionsConfig",
+    "quotation_maps",
 ]
 
 
@@ -379,3 +381,12 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ValueError(
         "EMAIL_USE_TLS e EMAIL_USE_SSL não podem estar ativos ao mesmo tempo."
     )
+
+HUB_PUBLIC_URL = config('HUB_PUBLIC_URL', default='http://localhost:4300')
+HUB_API_PUBLIC_URL = config('HUB_API_PUBLIC_URL', default=HUB_PUBLIC_URL)
+
+# Chave exclusiva entre BFFs; nunca expor no navegador.
+HUB_ORDERS_INTEGRATION_KEY = os.environ.get("HUB_ORDERS_INTEGRATION_KEY", "")
+
+# Endereço interno do Flask (somente backend, por exemplo http://bff-flask-daruix:8000).
+ORDERS_LEGACY_API_URL = os.environ.get("ORDERS_LEGACY_API_URL", "")

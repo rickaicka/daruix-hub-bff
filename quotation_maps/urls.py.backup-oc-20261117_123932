@@ -1,0 +1,15 @@
+from django.urls import path
+from .activation import activate_supplier
+from rest_framework.routers import SimpleRouter
+
+from .views import MapView, SupplierRegistryView, SupplierView
+from .tender import TenderView
+
+router = SimpleRouter()
+router.register("suppliers", SupplierView, basename="quotation-supplier")
+router.register("supplier-registry", SupplierRegistryView, basename="supplier-registry")
+router.register("tenders", TenderView, basename="quotation-tender")
+router.register("", MapView, basename="quotation-map")
+urlpatterns = router.urls
+
+urlpatterns += [path("activate/<str:uid>/<str:token>/", activate_supplier, name="supplier-activate")]

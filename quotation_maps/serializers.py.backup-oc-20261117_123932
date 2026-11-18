@@ -1,0 +1,119 @@
+from rest_framework import serializers
+
+from .composition_paths import composition_paths
+from .models import PurchaseOrder, QuotationMap, Supplier
+
+
+SUPPLIER_FIELDS = ("id", "name", "document", "contact", "phone", "email", "fax")
+
+
+class SupplierRead(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = SUPPLIER_FIELDS
+
+
+class MapSummary(serializers.ModelSerializer):
+    pc = serializers.CharField(source="requisition.proposal.code")
+    work = serializers.CharField(source="requisition.proposal.work_name")
+    rm = serializers.CharField(source="requisition.number")
+
+    class Meta:
+        model = QuotationMap
+        fields = ("id", "code", "pc", "work", "rm", "status", "created_at")
+
+
+class OrderRead(serializers.ModelSerializer):
+    class Meta:
+        model = PurchaseOrder
+        fields = ("id", "supplier_snapshot", "lines", "terms", "total", "created_at")
+
+
+class MapRead(MapSummary):
+    items = serializers.SerializerMethodField()
+    orders = OrderRead(many=True, read_only=True)
+
+    class Meta(MapSummary.Meta):
+        fields = MapSummary.Meta.fields + ("version", "items", "quotes", "notes", "orders", "tender_opened_at", "tender_closed_at", "tender_deadline")
+
+
+    def get_items(self, quotation):
+        paths = composition_paths(quotation)
+        return [
+            {**item, "composition_path": paths[item["id"]]} if item["id"] in paths else item
+            for item in quotation.items
+        ]
+
+
+class VersionWrite(serializers.Serializer):
+    version = serializers.IntegerField(min_value=1)
+
+
+class OfferWrite(serializers.Serializer):
+    item_id = serializers.IntegerField(min_value=1)
+    unit_price = serializers.DecimalField(max_digits=14, decimal_places=6, min_value=0, allow_null=True)
+    # Campos antigos ainda são aceitos para compatibilidade; o portal não os apresenta.
+    available_quantity = serializers.DecimalField(
+        max_digits=18, decimal_places=6, min_value=0, allow_null=True, default=None, required=False,
+    )
+    brand = serializers.CharField(max_length=255, allow_blank=True, default="", required=False)
+    notes = serializers.CharField(max_length=4000, allow_blank=True, default="")
+    selected = serializers.BooleanField(default=False)
+
+
+class QuoteWrite(serializers.Serializer):
+    supplier_id = serializers.IntegerField(min_value=1)
+    contact = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    phone = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    email = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    payment = serializers.CharField(max_length=255, allow_blank=True, default="")
+    delivery = serializers.CharField(max_length=255, allow_blank=True, default="")
+    validity = serializers.CharField(max_length=255, allow_blank=True, default="")
+    quoted_on = serializers.DateField(allow_null=True, default=None)
+    freight = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, default=0)
+    discount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, default=0)
+    notes = serializers.CharField(max_length=4000, allow_blank=True, default="")
+    offers = OfferWrite(many=True)
+
+
+class MapWrite(VersionWrite):
+    quotes = QuoteWrite(many=True, max_length=6)
+    notes = serializers.CharField(max_length=4000, allow_blank=True, default="")
+
+
+class SupplierWrite(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = SUPPLIER_FIELDS + ("active", "address", "notes", "portal_profile", "trade_name",
+                                   "business_segment", "website", "payment_terms", "delivery_terms")
+        extra_kwargs = {"name": {"max_length": 255}}
+
+    def validate_portal_profile(self, profile):
+        if profile is not None and (
+            not profile.is_active or not profile.user.is_active or profile.user.user_type != "FORNECEDOR"
+        ):
+            raise serializers.ValidationError("Selecione um perfil ativo de fornecedor.")
+        return profile
+
+    def create(self, validated_data):
+        from uuid import uuid4
+        return super().create(dict(validated_data, source_key=f"hub:{uuid4()}"))
+
+
+class TenderPublish(VersionWrite):
+    deadline = serializers.DateTimeField()
+
+    def validate_deadline(self, deadline):
+        from django.utils import timezone
+        if deadline <= timezone.now():
+            raise serializers.ValidationError("Informe uma data futura.")
+        return deadline
+
+
+class TenderOfferWrite(OfferWrite):
+    selected = serializers.HiddenField(default=False)
+
+
+class TenderBidWrite(QuoteWrite):
+    supplier_id = serializers.HiddenField(default=None)
+    offers = TenderOfferWrite(many=True, allow_empty=False)

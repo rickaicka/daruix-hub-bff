@@ -66,6 +66,164 @@ class OperationalRMTests(TestCase):
         rev = self.post(rev, 'sections', {'source_stage': self.stage.pk, 'description': 'Descrição geral livre'})
         return self.post(rev, f"sections/{rev['sections'][0]['id']}/items", {'supply': self.supply.pk, 'quantity': '2'})
 
+    def test_quotation_detail_recovers_composition_hierarchy_for_existing_snapshot(self):
+        from quotation_maps.models import QuotationMap
+
+        snapshot = deepcopy(self.source.composition_snapshot)
+        snapshot["items"][0]["source_path"] = "3.1"
+        snapshot["items"].append({
+            "source_path": "3", "item_type": "SUBCOMPOSITION",
+            "description_snapshot": "Subcomposição", "display_only": True,
+        })
+        BudgetSheetStageItem.objects.filter(pk=self.source.pk).update(composition_snapshot=snapshot)
+        rev = self.post(self.ready(), 'submit')
+        permission = Permission.objects.get(code='quotation_map.manage')
+        GroupPermission.objects.create(group=self.director.group, permission=permission)
+        self.client.force_authenticate(self.director)
+        self.post(rev, 'approve')
+
+        quotation = QuotationMap.objects.get(approved_revision_id=rev['id'])
+        response = self.client.get(f'/api/quotation-maps/{quotation.pk}/')
+        self.assertEqual(response.status_code, 200, response.data)
+        item = response.data['items'][0]
+        self.assertEqual([node['label'] for node in item['composition_path']], ['Composição', 'Subcomposição'])
+        self.assertEqual(item['id'], quotation.items[0]['id'])
+        self.assertEqual(item['quantity'], quotation.items[0]['quantity'])
+        self.assertNotIn('composition_path', quotation.items[0])
+
+    def test_approved_rm_yields_one_quotation_and_orders_only_for_selected_suppliers(self):
+        from accounts.models import HubNotification
+        from material_requisitions.models import MaterialRequisitionItem
+        from quotation_maps.models import QuotationMap, Supplier
+
+        rev = self.ready()
+        for name in ('Argamassa', 'Cimento'):
+            supply = Supply.objects.create(description=name, supply_type='MATERIAL', unit='UN')
+            MaterialRequisitionItem.objects.create(
+                section_id=rev['sections'][0]['id'], supply=supply, description=name,
+                quantity=2, unit='UN', supply_type='MATERIAL', position=2,
+            )
+        rev = self.post(rev, 'submit')
+        permission = Permission.objects.get(code='quotation_map.manage')
+        GroupPermission.objects.create(group=self.director.group, permission=permission)
+        self.client.force_authenticate(self.director)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post(rev, 'approve')
+
+        quotation = QuotationMap.objects.get(approved_revision_id=rev['id'])
+        notification = HubNotification.objects.get(event='quotation_map.ready')
+        self.assertEqual(notification.recipient_id, self.director.pk)
+        self.assertTrue(notification.route.endswith(f'?mapa={quotation.pk}'))
+        self.assertTrue(rev['number'].startswith('RM26001-'))
+        self.assertEqual(quotation.code, 'MC26001')
+        base = '/api/quotation-maps/'
+        detail = f'{base}{quotation.pk}/'
+        listing = self.client.get(base, {'pc': '26001', 'status': 'READY'})
+        self.assertEqual(listing.data['count'], 1)
+        self.client.force_authenticate(self.other)
+        self.assertEqual(self.client.get(detail).status_code, 403)
+        self.client.force_authenticate(self.director)
+        items = quotation.items
+        quotes = []
+        for index in range(5):
+            supplier = Supplier.objects.create(source_key=f'test-{index}', name=f'Fornecedor {index}')
+            offers = [
+                {'item_id': item['id'], 'unit_price': '12.50', 'selected': index == i}
+                for i, item in enumerate(items)
+            ]
+            quotes.append({'supplier_id': supplier.pk, 'offers': offers})
+
+        self.assertEqual(self.client.post(detail + 'generate-orders/', {'version': 1}, format='json').status_code, 409)
+        response = self.client.patch(detail, {'version': 1, 'quotes': quotes[:3]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(self.client.post(detail + 'finalize/', {'version': 2}, format='json').status_code, 400)
+        response = self.client.patch(detail, {'version': 2, 'quotes': quotes}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        notification.refresh_from_db()
+        self.assertIsNotNone(notification.resolved_at)
+        response = self.client.post(detail + 'finalize/', {'version': 3}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        for _ in range(2):
+            response = self.client.post(detail + 'generate-orders/', {'version': 4}, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+            orders = response.data['orders']
+            self.assertEqual(len(orders), 3)
+            self.assertEqual({order['total'] for order in orders}, {'25.00'})
+            self.assertEqual({order['supplier_snapshot']['id'] for order in orders},
+                             {quote['supplier_id'] for quote in quotes[:3]})
+
+    def test_tender_exposes_only_public_items_and_current_supplier_offer(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from accounts.models import Supplier as Profile
+        from quotation_maps.models import QuotationMap
+
+        rev = self.post(self.ready(), 'submit')
+        permission = Permission.objects.get(code='quotation_map.manage')
+        GroupPermission.objects.create(group=self.director.group, permission=permission)
+        self.client.force_authenticate(self.director)
+        self.post(rev, 'approve')
+        quotation = QuotationMap.objects.get(approved_revision_id=rev['id'])
+        base = '/api/quotation-maps/'
+        internal = f'{base}{quotation.pk}/'
+        external = f'{base}tenders/{quotation.pk}/'
+        profiles = []
+        for i in range(2):
+            user = User.objects.create_user(name=f'Fornecedor {i}', username=f'vendor{i}',
+                                           email=f'vendor{i}@test.local', user_type='FORNECEDOR')
+            profile = Profile.objects.create(user=user, legal_name=user.name)
+            response = self.client.post(base + 'supplier-registry/',
+                                        {'name': user.name, 'portal_profile': profile.pk}, format='json')
+            self.assertEqual(response.status_code, 201, response.data)
+            profiles.append(user)
+        response = self.client.patch(internal, {'version': 1, 'quotes': [], 'notes': 'Interno'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.client.force_authenticate(profiles[0])
+        self.assertEqual(self.client.get(external).status_code, 404)
+        self.assertEqual(self.client.get(internal).status_code, 403)
+        self.assertEqual(self.client.get(base + 'supplier-registry/').status_code, 403)
+
+        self.client.force_authenticate(self.director)
+        deadline = (timezone.now() + timedelta(days=1)).isoformat()
+        response = self.client.post(internal + 'publish-tender/',
+                                    {'version': 2, 'deadline': deadline}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        for i, user in enumerate(profiles):
+            self.client.force_authenticate(user)
+            listing = self.client.get(base + 'tenders/')
+            self.assertEqual(listing.data['count'], 1)
+            detail = self.client.get(external).data
+            self.assertEqual(set(detail), {
+                'id', 'code', 'pc', 'reference_date', 'delivery_date', 'deadline',
+                'open', 'items', 'participating', 'own_offer',
+            })
+            self.assertNotIn('notes', detail['items'][0])
+            self.assertIsNone(detail['own_offer'])
+            self.assertEqual(self.client.post(external + 'participate/').status_code, 200)
+            item_id = detail['items'][0]['id']
+            bid = {'offers': [{'item_id': item_id, 'unit_price': str(10 + i), 'selected': True}]}
+            response = self.client.put(external + 'bid/', bid, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(response.data['own_offer']['offers'][0]['unit_price'], f'{10 + i}.000000')
+            self.assertFalse(response.data['own_offer']['offers'][0]['selected'])
+
+        self.client.force_authenticate(self.director)
+        self.assertEqual(self.client.get(internal).data['quotes'], [])
+        response = self.client.post(internal + 'close-tender/', {'version': 3}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(len(response.data['quotes']), 2)
+        self.client.force_authenticate(profiles[0])
+        detail = self.client.get(external).data
+        self.assertFalse(detail['open'])
+        self.assertEqual(detail['own_offer']['offers'][0]['unit_price'], '10.000000')
+        self.assertEqual(self.client.put(external + 'bid/', bid, format='json').status_code, 409)
+
+        self.client.force_authenticate(self.owner)
+        second = self.post(self.ready(), 'submit')
+        self.client.force_authenticate(self.director)
+        self.post(second, 'approve')
+        self.assertEqual(QuotationMap.objects.get(approved_revision_id=second['id']).code, 'MC26001-01')
+
     def test_only_technical_responsible_with_permission_and_not_creator_can_approve(self):
         from material_requisitions.services.requisitions import can_decide_rm
         rev = self.post(self.ready(), 'submit')

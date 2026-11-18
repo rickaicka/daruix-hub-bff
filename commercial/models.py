@@ -234,6 +234,8 @@ class Proposal(models.Model):
     legacy_id = models.IntegerField(unique=True, blank=True, null=True)
     legacy_key = models.CharField(max_length=64, unique=True, blank=True, null=True)
     legacy_payload = models.JSONField(default=dict, blank=True)
+    # Dados fiscais e logísticos próprios desta PC, usados na futura OC.
+    commercial_details = models.JSONField(default=dict, blank=True)
     code = models.CharField(max_length=20, unique=True, blank=True)
     party = models.ForeignKey(Party, on_delete=models.PROTECT, related_name="proposals")
     work_address = models.ForeignKey(

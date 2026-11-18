@@ -1,0 +1,52 @@
+import hmac
+from django.conf import settings
+from django.db.models import Q
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+from .models import PurchaseOrder
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def hub_purchase_orders(request):
+    """Somente integração servidor-servidor com chave privada, nunca para navegador público."""
+    expected = getattr(settings, 'HUB_ORDERS_INTEGRATION_KEY', '')
+    supplied = request.headers.get('X-Hub-Orders-Key', '')
+    if not expected:
+        return Response({'detail': 'Integração não configurada.'}, status=503)
+    if not supplied or not hmac.compare_digest(supplied.encode(), expected.encode()):
+        return Response({'detail': 'Não autorizado.'}, status=403)
+
+    qs = PurchaseOrder.objects.select_related('quotation_map__requisition__proposal','supplier')
+    params = request.query_params
+    if search := params.get('search', '').strip()[:150]:
+        qs = qs.filter(Q(code__icontains=search) | Q(supplier__name__icontains=search) |
+                       Q(quotation_map__code__icontains=search) |
+                       Q(quotation_map__requisition__proposal__code__icontains=search))
+    if pc := params.get('pc', '').strip():
+        qs = qs.filter(quotation_map__requisition__proposal__code__iexact=pc)
+    if code := params.get('code', '').strip():
+        qs = qs.filter(code__iexact=code)
+    try:
+        page = max(1, int(params.get('page', '1')))
+        per_page = max(1, min(100, int(params.get('page_size', '20'))))
+    except ValueError:
+        return Response({'detail': 'Paginação inválida.'}, status=400)
+    total = qs.count()
+    orders = qs.order_by('-created_at', '-pk')[(page-1)*per_page:page*per_page]
+    result = []
+    for order in orders:
+        quotation = order.quotation_map
+        proposal = quotation.requisition.proposal
+        result.append({
+            'id': order.pk, 'source': 'hub', 'number': order.code,
+            'pc_number': proposal.code, 'quotation_map': quotation.code,
+            'rm': quotation.requisition.number, 'work': proposal.work_name,
+            'supplier': order.supplier_snapshot,
+            'items': order.lines, 'terms': order.terms,
+            'total': str(order.total), 'issued_at': order.created_at.isoformat(),
+            'status': 'GENERATED',
+        })
+    return Response({'count': total, 'page': page, 'page_size': per_page, 'results': result})

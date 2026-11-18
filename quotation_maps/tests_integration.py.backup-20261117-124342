@@ -1,0 +1,28 @@
+from django.test import SimpleTestCase
+from django.test import override_settings
+from rest_framework.test import APIRequestFactory
+from unittest.mock import patch
+from .order_numbering import make_order_code
+from .integration_api import hub_purchase_orders
+
+class OrderNumberingTests(SimpleTestCase):
+    def test_scoped_code(self):
+        self.assertEqual(make_order_code('PC25017', 1), 'HOC25017-001')
+        self.assertEqual(make_order_code('PC25017', 12), 'HOC25017-012')
+
+    def test_invalid_pc(self):
+        with self.assertRaises(ValueError):
+            make_order_code('25017', 1)
+
+class IntegrationSecurityTests(SimpleTestCase):
+    @override_settings(HUB_ORDERS_INTEGRATION_KEY='test-local-secret')
+    def test_denies_missing_key(self):
+        request = APIRequestFactory().get('/api/quotation-maps/integration/purchase-orders/')
+        response = hub_purchase_orders(request)
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(HUB_ORDERS_INTEGRATION_KEY='')
+    def test_disabled_by_default(self):
+        request = APIRequestFactory().get('/api/quotation-maps/integration/purchase-orders/')
+        response = hub_purchase_orders(request)
+        self.assertEqual(response.status_code, 503)

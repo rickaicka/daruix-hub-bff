@@ -1,0 +1,1185 @@
+diff --git a/config/settings.py b/config/settings.py
+--- a/config/settings.py
++++ b/config/settings.py
+@@ -53,6 +53,7 @@
+     "budgeting.apps.BudgetingConfig",
+     "memorando_remessas.apps.MemorandoRemessasConfig",
+     "material_requisitions.apps.MaterialRequisitionsConfig",
++    "quotation_maps",
+ ]
+ 
+ 
+diff --git a/config/urls.py b/config/urls.py
+--- a/config/urls.py
++++ b/config/urls.py
+@@ -8,6 +8,7 @@
+ )
+ 
+ urlpatterns = [
++    path("api/quotation-maps/", include("quotation_maps.urls")),
+     path("api/material-requisitions/", include("material_requisitions.urls")),
+     path("admin/", admin.site.urls),
+     path("api/", include("accounts.urls")),
+diff --git a/material_requisitions/services/requisitions.py b/material_requisitions/services/requisitions.py
+--- a/material_requisitions/services/requisitions.py
++++ b/material_requisitions/services/requisitions.py
+@@ -447,7 +447,16 @@
+         rev.status = Status.CANCELLED
+     else:
+         raise ValidationError('Ação inválida.')
+-    return _bump(rev, user, action.upper(), reason)
++    rev = _bump(rev, user, action.upper(), reason)
++    if action == 'approve':
++        from quotation_maps.services import create_for_approval, notify_ready
++        quotation, created = create_for_approval(rev)
++        if created:
++            transaction.on_commit(lambda: notify_ready(quotation.pk, user.pk), robust=True)
++    elif action == 'cancel':
++        from quotation_maps.services import cancel_for_rm
++        cancel_for_rm(root)
++    return rev
+ 
+ 
+ def new_revision(pk, expected, user, reason):
+diff --git a/material_requisitions/tests/test_material_requisitions.py b/material_requisitions/tests/test_material_requisitions.py
+--- a/material_requisitions/tests/test_material_requisitions.py
++++ b/material_requisitions/tests/test_material_requisitions.py
+@@ -66,6 +66,138 @@
+         rev = self.post(rev, 'sections', {'source_stage': self.stage.pk, 'description': 'Descrição geral livre'})
+         return self.post(rev, f"sections/{rev['sections'][0]['id']}/items", {'supply': self.supply.pk, 'quantity': '2'})
+ 
++    def test_approved_rm_yields_one_quotation_and_orders_only_for_selected_suppliers(self):
++        from accounts.models import HubNotification
++        from material_requisitions.models import MaterialRequisitionItem
++        from quotation_maps.models import QuotationMap, Supplier
++
++        rev = self.ready()
++        for name in ('Argamassa', 'Cimento'):
++            supply = Supply.objects.create(description=name, supply_type='MATERIAL', unit='UN')
++            MaterialRequisitionItem.objects.create(
++                section_id=rev['sections'][0]['id'], supply=supply, description=name,
++                quantity=2, unit='UN', supply_type='MATERIAL', position=2,
++            )
++        rev = self.post(rev, 'submit')
++        permission = Permission.objects.get(code='quotation_map.manage')
++        GroupPermission.objects.create(group=self.director.group, permission=permission)
++        self.client.force_authenticate(self.director)
++        with self.captureOnCommitCallbacks(execute=True):
++            self.post(rev, 'approve')
++
++        quotation = QuotationMap.objects.get(approved_revision_id=rev['id'])
++        notification = HubNotification.objects.get(event='quotation_map.ready')
++        self.assertEqual(notification.recipient_id, self.director.pk)
++        self.assertTrue(notification.route.endswith(f'?mapa={quotation.pk}'))
++        self.assertEqual(quotation.code, 'MC26001-00')
++        base = '/api/quotation-maps/'
++        detail = f'{base}{quotation.pk}/'
++        listing = self.client.get(base, {'pc': '26001', 'status': 'READY'})
++        self.assertEqual(listing.data['count'], 1)
++        self.client.force_authenticate(self.other)
++        self.assertEqual(self.client.get(detail).status_code, 403)
++        self.client.force_authenticate(self.director)
++        items = quotation.items
++        quotes = []
++        for index in range(5):
++            supplier = Supplier.objects.create(source_key=f'test-{index}', name=f'Fornecedor {index}')
++            offers = [
++                {'item_id': item['id'], 'unit_price': '12.50', 'selected': index == i}
++                for i, item in enumerate(items)
++            ]
++            quotes.append({'supplier_id': supplier.pk, 'offers': offers})
++
++        self.assertEqual(self.client.post(detail + 'generate-orders/', {'version': 1}, format='json').status_code, 409)
++        response = self.client.patch(detail, {'version': 1, 'quotes': quotes[:3]}, format='json')
++        self.assertEqual(response.status_code, 200, response.data)
++        self.assertEqual(self.client.post(detail + 'finalize/', {'version': 2}, format='json').status_code, 400)
++        response = self.client.patch(detail, {'version': 2, 'quotes': quotes}, format='json')
++        self.assertEqual(response.status_code, 200, response.data)
++        notification.refresh_from_db()
++        self.assertIsNotNone(notification.resolved_at)
++        response = self.client.post(detail + 'finalize/', {'version': 3}, format='json')
++        self.assertEqual(response.status_code, 200, response.data)
++        for _ in range(2):
++            response = self.client.post(detail + 'generate-orders/', {'version': 4}, format='json')
++            self.assertEqual(response.status_code, 200, response.data)
++            orders = response.data['orders']
++            self.assertEqual(len(orders), 3)
++            self.assertEqual({order['total'] for order in orders}, {'25.00'})
++            self.assertEqual({order['supplier_snapshot']['id'] for order in orders},
++                             {quote['supplier_id'] for quote in quotes[:3]})
++
++    def test_tender_exposes_only_public_items_and_current_supplier_offer(self):
++        from datetime import timedelta
++        from django.utils import timezone
++        from accounts.models import Supplier as Profile
++        from quotation_maps.models import QuotationMap
++
++        rev = self.post(self.ready(), 'submit')
++        permission = Permission.objects.get(code='quotation_map.manage')
++        GroupPermission.objects.create(group=self.director.group, permission=permission)
++        self.client.force_authenticate(self.director)
++        self.post(rev, 'approve')
++        quotation = QuotationMap.objects.get(approved_revision_id=rev['id'])
++        base = '/api/quotation-maps/'
++        internal = f'{base}{quotation.pk}/'
++        external = f'{base}tenders/{quotation.pk}/'
++        profiles = []
++        for i in range(2):
++            user = User.objects.create_user(name=f'Fornecedor {i}', username=f'vendor{i}',
++                                           email=f'vendor{i}@test.local', user_type='FORNECEDOR')
++            profile = Profile.objects.create(user=user, legal_name=user.name)
++            response = self.client.post(base + 'supplier-registry/',
++                                        {'name': user.name, 'portal_profile': profile.pk}, format='json')
++            self.assertEqual(response.status_code, 201, response.data)
++            profiles.append(user)
++        response = self.client.patch(internal, {'version': 1, 'quotes': [], 'notes': 'Interno'}, format='json')
++        self.assertEqual(response.status_code, 200, response.data)
++        self.client.force_authenticate(profiles[0])
++        self.assertEqual(self.client.get(external).status_code, 404)
++        self.assertEqual(self.client.get(internal).status_code, 403)
++        self.assertEqual(self.client.get(base + 'supplier-registry/').status_code, 403)
++
++        self.client.force_authenticate(self.director)
++        deadline = (timezone.now() + timedelta(days=1)).isoformat()
++        response = self.client.post(internal + 'publish-tender/',
++                                    {'version': 2, 'deadline': deadline}, format='json')
++        self.assertEqual(response.status_code, 200, response.data)
++        for i, user in enumerate(profiles):
++            self.client.force_authenticate(user)
++            listing = self.client.get(base + 'tenders/')
++            self.assertEqual(listing.data['count'], 1)
++            detail = self.client.get(external).data
++            self.assertEqual(set(detail), {
++                'id', 'code', 'pc', 'reference_date', 'delivery_date', 'deadline',
++                'open', 'items', 'participating', 'own_offer',
++            })
++            self.assertNotIn('notes', detail['items'][0])
++            self.assertIsNone(detail['own_offer'])
++            self.assertEqual(self.client.post(external + 'participate/').status_code, 200)
++            item_id = detail['items'][0]['id']
++            bid = {'offers': [{'item_id': item_id, 'unit_price': str(10 + i), 'selected': True}]}
++            response = self.client.put(external + 'bid/', bid, format='json')
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data['own_offer']['offers'][0]['unit_price'], f'{10 + i}.000000')
++            self.assertFalse(response.data['own_offer']['offers'][0]['selected'])
++
++        self.client.force_authenticate(self.director)
++        self.assertEqual(self.client.get(internal).data['quotes'], [])
++        response = self.client.post(internal + 'close-tender/', {'version': 3}, format='json')
++        self.assertEqual(response.status_code, 200, response.data)
++        self.assertEqual(len(response.data['quotes']), 2)
++        self.client.force_authenticate(profiles[0])
++        detail = self.client.get(external).data
++        self.assertFalse(detail['open'])
++        self.assertEqual(detail['own_offer']['offers'][0]['unit_price'], '10.000000')
++        self.assertEqual(self.client.put(external + 'bid/', bid, format='json').status_code, 409)
++
++        self.client.force_authenticate(self.owner)
++        second = self.post(self.ready(), 'submit')
++        self.client.force_authenticate(self.director)
++        self.post(second, 'approve')
++        self.assertEqual(QuotationMap.objects.get(approved_revision_id=second['id']).code, 'MC26001-01')
++
+     def test_only_technical_responsible_with_permission_and_not_creator_can_approve(self):
+         from material_requisitions.services.requisitions import can_decide_rm
+         rev = self.post(self.ready(), 'submit')
+diff --git a/quotation_maps/__init__.py b/quotation_maps/__init__.py
+new file mode 100644
+diff --git a/quotation_maps/management/__init__.py b/quotation_maps/management/__init__.py
+new file mode 100644
+diff --git a/quotation_maps/management/commands/__init__.py b/quotation_maps/management/commands/__init__.py
+new file mode 100644
+diff --git a/quotation_maps/management/commands/backfill_quotation_maps.py b/quotation_maps/management/commands/backfill_quotation_maps.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/management/commands/backfill_quotation_maps.py
+@@ -0,0 +1,33 @@
++from django.core.management.base import BaseCommand
++from django.db import transaction
++
++from material_requisitions.models import MaterialRequisition, RMStatus
++from quotation_maps.models import QuotationMap
++from quotation_maps.services import create_for_approval, notify_ready
++
++
++class Command(BaseCommand):
++    help = "Cria mapas para RMs operacionais já aprovadas."
++
++    def add_arguments(self, parser):
++        parser.add_argument("--apply", action="store_true")
++        parser.add_argument("--notify", action="store_true")
++
++    def handle(self, **options):
++        candidates = MaterialRequisition.objects.filter(
++            cancelled_at__isnull=True, approved_revision__status=RMStatus.APPROVED,
++        )
++        missing = candidates.exclude(pk__in=QuotationMap.objects.values("requisition_id"))
++        if not options["apply"]:
++            self.stdout.write(f"RMs aprovadas sem mapa: {missing.count()}")
++            return
++        for pk in missing.values_list("pk", flat=True).iterator():
++            with transaction.atomic():
++                rm = MaterialRequisition.objects.select_for_update().get(pk=pk)
++                if rm.cancelled_at or not rm.approved_revision_id or rm.approved_revision.status != RMStatus.APPROVED:
++                    continue
++                quotation, created = create_for_approval(rm.approved_revision)
++                if options["notify"] and created:
++                    transaction.on_commit(lambda: notify_ready(quotation.pk, None), robust=True)
++                if created:
++                    self.stdout.write(quotation.code)
+diff --git a/quotation_maps/management/commands/import_quotation_suppliers.py b/quotation_maps/management/commands/import_quotation_suppliers.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/management/commands/import_quotation_suppliers.py
+@@ -0,0 +1,78 @@
++import json
++from pathlib import Path
++
++from django.core.management.base import BaseCommand, CommandError
++from django.db import transaction
++
++from quotation_maps.models import Supplier
++
++
++class Command(BaseCommand):
++    help = "Importa fornecedores usando a tabela e as colunas confirmadas no Access."
++    optional_fields = ("document", "contact", "phone", "email", "fax", "address", "notes", "trade_name",
++                       "business_segment", "website", "payment_terms", "delivery_terms")
++    sgo_table = "Cadastro  Fornecedores"
++    sgo_fields = {
++        "name": "RazaoSocial", "document": "CNPJ", "contact": "Contato1F", "phone": "Telefone",
++        "email": "Email", "fax": "Fax", "notes": "Observações dos ContatosF",
++        "trade_name": "nome fantasia", "business_segment": "Ramo Empresarial", "website": "Site",
++        "payment_terms": "CondiçõesDoPagamento", "delivery_terms": "Prazo de Entrega",
++    }
++    sgo_address = ("Endereço", "Bairro", "Cidade", "Estado", "CEP")
++
++    def add_arguments(self, parser):
++        parser.add_argument("export", type=Path)
++        parser.add_argument("--sgo", action="store_true", help="Usa o mapeamento do cadastro principal do SGO.")
++        parser.add_argument("--table")
++        parser.add_argument("--id", action="append", dest="identity")
++        parser.add_argument("--name")
++        for field in self.optional_fields:
++            parser.add_argument(f"--{field}")
++        parser.add_argument("--apply", action="store_true")
++
++    @transaction.atomic
++    def handle(self, **options):
++        sgo = options["sgo"]
++        table_name = options["table"] or (self.sgo_table if sgo else None)
++        if not table_name or not (sgo or options["name"]):
++            raise CommandError("Use --sgo ou informe --table e --name.")
++        try:
++            table = json.loads(options["export"].read_text(encoding="utf-8"))["tables"][table_name]
++            rows = table["rows"]
++            identity = options["identity"] or table["primary_key"]
++            columns = {column["name"] for column in table["columns"]}
++        except (OSError, ValueError, KeyError, TypeError) as error:
++            raise CommandError("Exportação ou tabela inválida.") from error
++        if not identity:
++            raise CommandError("Informe uma chave estável com --id.")
++        mapping = self.sgo_fields.copy() if sgo else {}
++        mapping.update({field: options[field] for field in ("name", *self.optional_fields) if options[field]})
++        required = set(identity).union(mapping.values())
++        if sgo:
++            required.update((*self.sgo_address, "bloqueado"))
++        if missing := required.difference(columns):
++            raise CommandError(f"Colunas não encontradas: {', '.join(sorted(missing))}")
++        suppliers = {}
++        for number, row in enumerate(rows, 1):
++            key_values = [row.get(col) for col in identity]
++            if any(value is None or str(value).strip() == "" for value in key_values):
++                raise CommandError(f"Chave ausente na linha {number}.")
++            key = json.dumps([table_name, *key_values], ensure_ascii=False, separators=(",", ":"))
++            if key in suppliers or len(key) > 255:
++                raise CommandError(f"Chave duplicada ou longa demais na linha {number}.")
++            fields = {field: str(row[col]).strip() if row.get(col) is not None else "" for field, col in mapping.items()}
++            if sgo:
++                fields["name"] = fields["name"] or fields["trade_name"]
++                fields["email"] = fields["email"] or str(row.get("e-mail1f") or "").strip()
++                fields["phone"] = fields["phone"] or str(row.get("Tel1f") or row.get("Cel1f") or "").strip()
++                if not options["address"]:
++                    fields["address"] = ", ".join(str(row[col]).strip() for col in self.sgo_address if row.get(col))
++                fields["active"] = str(row["bloqueado"]).strip().lower() not in {"true", "1", "-1", "sim"}
++            if not fields["name"]:
++                raise CommandError(f"Nome ausente na linha {number}.")
++            suppliers[key] = dict(fields, source=row)
++        if options["apply"]:
++            for key, fields in suppliers.items():
++                Supplier.objects.update_or_create(source_key=key, defaults=fields)
++        mode = "Importados" if options["apply"] else "Validados em simulação"
++        self.stdout.write(f"{mode}: {len(suppliers)} fornecedores.")
+diff --git a/quotation_maps/migrations/0001_initial.py b/quotation_maps/migrations/0001_initial.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/migrations/0001_initial.py
+@@ -0,0 +1,62 @@
++# Generated by Django 6.0.6 on 2026-11-12 16:09
++
++import django.db.models.deletion
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    initial = True
++
++    dependencies = [
++        ('material_requisitions', '0003_section_free_description'),
++    ]
++
++    operations = [
++        migrations.CreateModel(
++            name='Supplier',
++            fields=[
++                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
++                ('source_key', models.CharField(max_length=255, unique=True)),
++                ('name', models.TextField()),
++                ('document', models.TextField(blank=True)),
++                ('contact', models.TextField(blank=True)),
++                ('phone', models.TextField(blank=True)),
++                ('email', models.TextField(blank=True)),
++                ('fax', models.TextField(blank=True)),
++                ('active', models.BooleanField(default=True)),
++                ('source', models.JSONField(default=dict)),
++            ],
++        ),
++        migrations.CreateModel(
++            name='QuotationMap',
++            fields=[
++                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
++                ('code', models.CharField(max_length=100, unique=True)),
++                ('status', models.CharField(choices=[('READY', 'Pronto para cotar'), ('DRAFT', 'Em cotação'), ('FINAL', 'Finalizado'), ('ORDERED', 'Ordens geradas'), ('CANCELLED', 'Cancelado')], db_index=True, default='READY', max_length=12)),
++                ('version', models.PositiveIntegerField(default=1)),
++                ('items', models.JSONField(default=list)),
++                ('quotes', models.JSONField(default=list)),
++                ('notes', models.TextField(blank=True)),
++                ('created_at', models.DateTimeField(auto_now_add=True)),
++                ('approved_revision', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='material_requisitions.materialrequisitionrevision')),
++                ('requisition', models.OneToOneField(on_delete=django.db.models.deletion.PROTECT, to='material_requisitions.materialrequisition')),
++            ],
++        ),
++        migrations.CreateModel(
++            name='PurchaseOrder',
++            fields=[
++                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
++                ('supplier_snapshot', models.JSONField()),
++                ('lines', models.JSONField()),
++                ('terms', models.JSONField()),
++                ('total', models.DecimalField(decimal_places=2, max_digits=34)),
++                ('created_at', models.DateTimeField(auto_now_add=True)),
++                ('quotation_map', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='orders', to='quotation_maps.quotationmap')),
++                ('supplier', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='quotation_maps.supplier')),
++            ],
++            options={
++                'constraints': [models.UniqueConstraint(fields=('quotation_map', 'supplier'), name='unique_order_per_map_supplier')],
++            },
++        ),
++    ]
+diff --git a/quotation_maps/migrations/0002_manage_permission.py b/quotation_maps/migrations/0002_manage_permission.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/migrations/0002_manage_permission.py
+@@ -0,0 +1,14 @@
++from django.db import migrations
++
++
++def seed(apps, schema_editor):
++    permission = apps.get_model("accounts", "Permission")
++    permission.objects.using(schema_editor.connection.alias).get_or_create(
++        code="quotation_map.manage",
++        defaults={"module": "obras", "description": "Montar mapas de cotação e gerar ordens de compra"},
++    )
++
++
++class Migration(migrations.Migration):
++    dependencies = [("quotation_maps", "0001_initial"), ("accounts", "0013_disable_rm_revise_and_clean_notifications")]
++    operations = [migrations.RunPython(seed, migrations.RunPython.noop)]
+diff --git a/quotation_maps/migrations/0003_quotationmap_revision_number_and_more.py b/quotation_maps/migrations/0003_quotationmap_revision_number_and_more.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/migrations/0003_quotationmap_revision_number_and_more.py
+@@ -0,0 +1,63 @@
++# Generated by Django 6.0.6 on 2026-11-12 16:18
++
++import django.db.models.deletion
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('accounts', '0013_disable_rm_revise_and_clean_notifications'),
++        ('quotation_maps', '0002_manage_permission'),
++    ]
++
++    operations = [
++        migrations.AddField(
++            model_name='quotationmap',
++            name='revision_number',
++            field=models.PositiveIntegerField(default=0),
++        ),
++        migrations.AddField(
++            model_name='quotationmap',
++            name='tender_closed_at',
++            field=models.DateTimeField(blank=True, null=True),
++        ),
++        migrations.AddField(
++            model_name='quotationmap',
++            name='tender_deadline',
++            field=models.DateTimeField(blank=True, null=True),
++        ),
++        migrations.AddField(
++            model_name='quotationmap',
++            name='tender_opened_at',
++            field=models.DateTimeField(blank=True, null=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='address',
++            field=models.TextField(blank=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='notes',
++            field=models.TextField(blank=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='portal_profile',
++            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='quotation_supplier', to='accounts.supplier'),
++        ),
++        migrations.CreateModel(
++            name='TenderBid',
++            fields=[
++                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
++                ('offer', models.JSONField(blank=True, null=True)),
++                ('submitted_at', models.DateTimeField(blank=True, null=True)),
++                ('quotation', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='tender_bids', to='quotation_maps.quotationmap')),
++                ('supplier', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='quotation_maps.supplier')),
++            ],
++            options={
++                'constraints': [models.UniqueConstraint(fields=('quotation', 'supplier'), name='unique_tender_bid_per_supplier')],
++            },
++        ),
++    ]
+diff --git a/quotation_maps/migrations/0004_renumber_maps.py b/quotation_maps/migrations/0004_renumber_maps.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/migrations/0004_renumber_maps.py
+@@ -0,0 +1,23 @@
++from django.db import migrations
++
++
++def renumber(apps, schema_editor):
++    Map = apps.get_model("quotation_maps", "QuotationMap")
++    maps = Map.objects.using(schema_editor.connection.alias).select_related("requisition__proposal")
++    counters = {}
++    for quotation in maps.order_by("created_at", "pk").iterator():
++        proposal = quotation.requisition.proposal
++        number = counters.get(proposal.pk, 0)
++        quotation.revision_number = number
++        quotation.code = f"MC{proposal.code.removeprefix('PC')}-{number:02d}"
++        quotation.save(using=schema_editor.connection.alias, update_fields=["revision_number", "code"])
++        counters[proposal.pk] = number + 1
++        Notification = apps.get_model("accounts", "HubNotification")
++        Notification.objects.using(schema_editor.connection.alias).filter(
++            event="quotation_map.ready", resource_type="quotation_map", resource_id=str(quotation.pk),
++        ).update(message=quotation.code)
++
++
++class Migration(migrations.Migration):
++    dependencies = [("quotation_maps", "0003_quotationmap_revision_number_and_more")]
++    operations = [migrations.RunPython(renumber, migrations.RunPython.noop)]
+diff --git a/quotation_maps/migrations/0005_supplier_business_segment_supplier_delivery_terms_and_more.py b/quotation_maps/migrations/0005_supplier_business_segment_supplier_delivery_terms_and_more.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/migrations/0005_supplier_business_segment_supplier_delivery_terms_and_more.py
+@@ -0,0 +1,38 @@
++# Generated by Django 6.0.6 on 2026-11-12 16:22
++
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('quotation_maps', '0004_renumber_maps'),
++    ]
++
++    operations = [
++        migrations.AddField(
++            model_name='supplier',
++            name='business_segment',
++            field=models.TextField(blank=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='delivery_terms',
++            field=models.TextField(blank=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='payment_terms',
++            field=models.TextField(blank=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='trade_name',
++            field=models.TextField(blank=True),
++        ),
++        migrations.AddField(
++            model_name='supplier',
++            name='website',
++            field=models.TextField(blank=True),
++        ),
++    ]
+diff --git a/quotation_maps/migrations/__init__.py b/quotation_maps/migrations/__init__.py
+new file mode 100644
+diff --git a/quotation_maps/models.py b/quotation_maps/models.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/models.py
+@@ -0,0 +1,75 @@
++from django.db import models
++
++
++class Supplier(models.Model):
++    """Cadastro comercial importado do Access, independente de conta de acesso."""
++
++    portal_profile = models.OneToOneField(
++        "accounts.Supplier", null=True, blank=True, on_delete=models.SET_NULL, related_name="quotation_supplier",
++    )
++    trade_name = models.TextField(blank=True)
++    business_segment = models.TextField(blank=True)
++    website = models.TextField(blank=True)
++    payment_terms = models.TextField(blank=True)
++    delivery_terms = models.TextField(blank=True)
++    address = models.TextField(blank=True)
++    notes = models.TextField(blank=True)
++    source_key = models.CharField(max_length=255, unique=True)
++    name = models.TextField()
++    document = models.TextField(blank=True)
++    contact = models.TextField(blank=True)
++    phone = models.TextField(blank=True)
++    email = models.TextField(blank=True)
++    fax = models.TextField(blank=True)
++    active = models.BooleanField(default=True)
++    source = models.JSONField(default=dict)
++
++
++class QuotationMap(models.Model):
++    class Status(models.TextChoices):
++        READY = "READY", "Pronto para cotar"
++        DRAFT = "DRAFT", "Em cotação"
++        FINAL = "FINAL", "Finalizado"
++        ORDERED = "ORDERED", "Ordens geradas"
++        CANCELLED = "CANCELLED", "Cancelado"
++
++    requisition = models.OneToOneField("material_requisitions.MaterialRequisition", on_delete=models.PROTECT)
++    approved_revision = models.ForeignKey("material_requisitions.MaterialRequisitionRevision", on_delete=models.PROTECT)
++    revision_number = models.PositiveIntegerField(default=0)
++    tender_opened_at = models.DateTimeField(null=True, blank=True)
++    tender_closed_at = models.DateTimeField(null=True, blank=True)
++    tender_deadline = models.DateTimeField(null=True, blank=True)
++    code = models.CharField(max_length=100, unique=True)
++    status = models.CharField(max_length=12, choices=Status.choices, default=Status.READY, db_index=True)
++    version = models.PositiveIntegerField(default=1)
++    items = models.JSONField(default=list)
++    quotes = models.JSONField(default=list)
++    notes = models.TextField(blank=True)
++    created_at = models.DateTimeField(auto_now_add=True)
++
++
++class PurchaseOrder(models.Model):
++    quotation_map = models.ForeignKey(QuotationMap, on_delete=models.PROTECT, related_name="orders")
++    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT)
++    supplier_snapshot = models.JSONField()
++    lines = models.JSONField()
++    terms = models.JSONField()
++    total = models.DecimalField(max_digits=34, decimal_places=2)
++    created_at = models.DateTimeField(auto_now_add=True)
++
++    class Meta:
++        constraints = [
++            models.UniqueConstraint(fields=["quotation_map", "supplier"], name="unique_order_per_map_supplier"),
++        ]
++
++
++class TenderBid(models.Model):
++    quotation = models.ForeignKey(QuotationMap, on_delete=models.PROTECT, related_name="tender_bids")
++    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT)
++    offer = models.JSONField(null=True, blank=True)
++    submitted_at = models.DateTimeField(null=True, blank=True)
++
++    class Meta:
++        constraints = [
++            models.UniqueConstraint(fields=["quotation", "supplier"], name="unique_tender_bid_per_supplier"),
++        ]
+diff --git a/quotation_maps/serializers.py b/quotation_maps/serializers.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/serializers.py
+@@ -0,0 +1,108 @@
++from rest_framework import serializers
++
++from .models import PurchaseOrder, QuotationMap, Supplier
++
++
++SUPPLIER_FIELDS = ("id", "name", "document", "contact", "phone", "email", "fax")
++
++
++class SupplierRead(serializers.ModelSerializer):
++    class Meta:
++        model = Supplier
++        fields = SUPPLIER_FIELDS
++
++
++class MapSummary(serializers.ModelSerializer):
++    pc = serializers.CharField(source="requisition.proposal.code")
++    work = serializers.CharField(source="requisition.proposal.work_name")
++    rm = serializers.CharField(source="requisition.number")
++
++    class Meta:
++        model = QuotationMap
++        fields = ("id", "code", "pc", "work", "rm", "status", "created_at")
++
++
++class OrderRead(serializers.ModelSerializer):
++    class Meta:
++        model = PurchaseOrder
++        fields = ("id", "supplier_snapshot", "lines", "terms", "total", "created_at")
++
++
++class MapRead(MapSummary):
++    orders = OrderRead(many=True, read_only=True)
++
++    class Meta(MapSummary.Meta):
++        fields = MapSummary.Meta.fields + ("version", "items", "quotes", "notes", "orders", "tender_opened_at", "tender_closed_at", "tender_deadline")
++
++
++class VersionWrite(serializers.Serializer):
++    version = serializers.IntegerField(min_value=1)
++
++
++class OfferWrite(serializers.Serializer):
++    item_id = serializers.IntegerField(min_value=1)
++    unit_price = serializers.DecimalField(max_digits=14, decimal_places=6, min_value=0, allow_null=True)
++    available_quantity = serializers.DecimalField(
++        max_digits=18, decimal_places=6, min_value=0, allow_null=True, default=None,
++    )
++    brand = serializers.CharField(max_length=255, allow_blank=True, default="")
++    notes = serializers.CharField(max_length=4000, allow_blank=True, default="")
++    selected = serializers.BooleanField(default=False)
++
++
++class QuoteWrite(serializers.Serializer):
++    supplier_id = serializers.IntegerField(min_value=1)
++    contact = serializers.CharField(max_length=255, allow_blank=True, required=False)
++    phone = serializers.CharField(max_length=255, allow_blank=True, required=False)
++    email = serializers.CharField(max_length=255, allow_blank=True, required=False)
++    payment = serializers.CharField(max_length=255, allow_blank=True, default="")
++    delivery = serializers.CharField(max_length=255, allow_blank=True, default="")
++    validity = serializers.CharField(max_length=255, allow_blank=True, default="")
++    quoted_on = serializers.DateField(allow_null=True, default=None)
++    freight = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, default=0)
++    discount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, default=0)
++    notes = serializers.CharField(max_length=4000, allow_blank=True, default="")
++    offers = OfferWrite(many=True)
++
++
++class MapWrite(VersionWrite):
++    quotes = QuoteWrite(many=True, max_length=6)
++    notes = serializers.CharField(max_length=4000, allow_blank=True, default="")
++
++
++class SupplierWrite(serializers.ModelSerializer):
++    class Meta:
++        model = Supplier
++        fields = SUPPLIER_FIELDS + ("active", "address", "notes", "portal_profile", "trade_name",
++                                   "business_segment", "website", "payment_terms", "delivery_terms")
++        extra_kwargs = {"name": {"max_length": 255}}
++
++    def validate_portal_profile(self, profile):
++        if profile is not None and (
++            not profile.is_active or not profile.user.is_active or profile.user.user_type != "FORNECEDOR"
++        ):
++            raise serializers.ValidationError("Selecione um perfil ativo de fornecedor.")
++        return profile
++
++    def create(self, validated_data):
++        from uuid import uuid4
++        return super().create(dict(validated_data, source_key=f"hub:{uuid4()}"))
++
++
++class TenderPublish(VersionWrite):
++    deadline = serializers.DateTimeField()
++
++    def validate_deadline(self, deadline):
++        from django.utils import timezone
++        if deadline <= timezone.now():
++            raise serializers.ValidationError("Informe uma data futura.")
++        return deadline
++
++
++class TenderOfferWrite(OfferWrite):
++    selected = serializers.HiddenField(default=False)
++
++
++class TenderBidWrite(QuoteWrite):
++    supplier_id = serializers.HiddenField(default=None)
++    offers = TenderOfferWrite(many=True, allow_empty=False)
+diff --git a/quotation_maps/services.py b/quotation_maps/services.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/services.py
+@@ -0,0 +1,71 @@
++from django.contrib.auth import get_user_model
++from django.db import transaction
++from django.db.models import Max
++from commercial.models import Proposal
++
++from accounts.services.notifications import publish, resolve
++from accounts.services.permission_service import user_has_permission
++from material_requisitions.models import MaterialRequisitionItem
++
++from .models import QuotationMap
++
++
++ROUTE = "/hub/obras/mapas-cotacao"
++PERMISSION = "quotation_map.manage"
++
++
++@transaction.atomic
++def create_for_approval(revision):
++    rm = revision.requisition
++    proposal = Proposal.objects.select_for_update().get(pk=rm.proposal_id)
++    existing = QuotationMap.objects.filter(requisition=rm).first()
++    if existing is not None:
++        return existing, False
++    pc = proposal.code.removeprefix("PC")
++    last = QuotationMap.objects.filter(requisition__proposal=proposal).aggregate(value=Max("revision_number"))["value"]
++    number = 0 if last is None else last + 1
++    items = MaterialRequisitionItem.objects.filter(section__revision=revision).select_related("section")
++    snapshot = [
++        dict(id=item.pk, stage=item.section.stage_name, description=item.description, unit=item.unit,
++             quantity=str(item.quantity), period=item.period, period_unit=item.period_unit, notes=item.notes)
++        for item in items.order_by("section__position", "section_id", "position", "pk")
++    ]
++    return QuotationMap.objects.get_or_create(
++        requisition=rm,
++        defaults=dict(approved_revision=revision, code=f"MC{pc}-{number:02d}", revision_number=number, items=snapshot),
++    )
++
++
++@transaction.atomic
++def notify_ready(map_id, actor_id):
++    quotation = QuotationMap.objects.select_for_update().filter(pk=map_id, status=QuotationMap.Status.READY).first()
++    if quotation is None:
++        return
++    users = get_user_model().objects.filter(is_active=True, user_type="COLABORADOR").select_related("group")
++    publish(module="obras", event="quotation_map.ready", resource_type="quotation_map",
++            resource_id=map_id, title="RM aprovada · Montar cotação", message=quotation.code,
++            recipients=[user for user in users if can_manage(user)], actor=actor_id,
++            route=f"{ROUTE}?mapa={map_id}", payload={"requisition_id": quotation.requisition_id})
++
++
++def can_manage(user):
++    return user.is_authenticated and user.is_active and user.user_type == "COLABORADOR" and (
++        user.is_superuser or (
++            user.group_id and user.group.is_active
++            and user_has_permission(user, PERMISSION)
++        )
++    )
++
++
++def resolve_ready(map_id):
++    resolve(module="obras", event="quotation_map.ready", resource_type="quotation_map", resource_id=map_id)
++
++
++def cancel_for_rm(rm):
++    quotation = QuotationMap.objects.select_for_update().filter(requisition=rm).first()
++    if quotation is None or quotation.status == QuotationMap.Status.ORDERED:
++        return
++    quotation.status = QuotationMap.Status.CANCELLED
++    quotation.version += 1
++    quotation.save(update_fields=["status", "version"])
++    resolve_ready(quotation.pk)
+diff --git a/quotation_maps/tender.py b/quotation_maps/tender.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/tender.py
+@@ -0,0 +1,100 @@
++from django.db import transaction
++from django.db.models import Q
++from django.shortcuts import get_object_or_404
++from django.utils import timezone
++from rest_framework import viewsets
++from rest_framework.decorators import action
++from rest_framework.exceptions import PermissionDenied, ValidationError
++from rest_framework.response import Response
++
++from .models import QuotationMap, Supplier, TenderBid
++from .serializers import TenderBidWrite
++from .views import Conflict, Pagination, validate_quotes
++
++
++def supplier_for(user):
++    if not user.is_authenticated or not user.is_active or user.user_type != "FORNECEDOR":
++        raise PermissionDenied("Acesso exclusivo de fornecedores vinculados.")
++    supplier = Supplier.objects.filter(active=True, portal_profile__user=user, portal_profile__is_active=True).first()
++    if supplier is None:
++        raise PermissionDenied("Sua conta precisa estar vinculada ao cadastro de fornecedor.")
++    return supplier
++
++
++class TenderView(viewsets.GenericViewSet):
++    pagination_class = Pagination
++    lookup_value_regex = r"[0-9]+"
++    serializer_class = TenderBidWrite
++
++    def _visible(self, supplier):
++        return QuotationMap.objects.filter(tender_opened_at__isnull=False).filter(
++            Q(tender_closed_at__isnull=True, tender_deadline__gt=timezone.now(), status=QuotationMap.Status.DRAFT)
++            | Q(tender_bids__supplier=supplier)
++        ).distinct().select_related("requisition__proposal", "approved_revision").order_by("-tender_opened_at", "-pk")
++
++    def _header(self, quotation):
++        rev = quotation.approved_revision
++        return dict(id=quotation.pk, code=quotation.code, pc=quotation.requisition.proposal.code,
++                    reference_date=rev.reference_date, delivery_date=rev.delivery_date,
++                    deadline=quotation.tender_deadline,
++                    open=quotation.status == QuotationMap.Status.DRAFT and
++                         quotation.tender_closed_at is None and quotation.tender_deadline > timezone.now())
++
++    def _detail(self, quotation, supplier):
++        participation = quotation.tender_bids.filter(supplier=supplier).first()
++        items = [
++            {key: item[key] for key in ("id", "description", "unit", "quantity", "period", "period_unit")}
++            for item in quotation.items
++        ]
++        own_offer = None
++        if participation and participation.offer:
++            own_offer = {key: value for key, value in participation.offer.items() if key != "supplier"}
++        return dict(self._header(quotation), items=items, participating=participation is not None,
++                    own_offer=own_offer)
++
++    def list(self, request):
++        supplier = supplier_for(request.user)
++        page = self.paginate_queryset(self._visible(supplier))
++        return self.get_paginated_response([self._header(quotation) for quotation in page])
++
++    def retrieve(self, request, pk=None):
++        supplier = supplier_for(request.user)
++        return Response(self._detail(get_object_or_404(self._visible(supplier), pk=pk), supplier))
++
++    def _lock(self, pk, supplier):
++        reference = get_object_or_404(self._visible(supplier), pk=pk)
++        quotation = QuotationMap.objects.select_for_update().get(pk=reference.pk)
++        if not self._header(quotation)["open"]:
++            raise Conflict("A cotação está fechada para propostas.")
++        return quotation
++
++    @action(detail=True, methods=["post"])
++    @transaction.atomic
++    def participate(self, request, pk=None):
++        supplier = supplier_for(request.user)
++        quotation = self._lock(pk, supplier)
++        reserved = {quote["supplier"]["id"] for quote in quotation.quotes}
++        reserved.update(quotation.tender_bids.values_list("supplier_id", flat=True))
++        if len(reserved) >= 6 and supplier.pk not in reserved:
++            raise Conflict("As vagas desta cotação já foram preenchidas.")
++        TenderBid.objects.get_or_create(quotation=quotation, supplier=supplier)
++        return Response(self._detail(quotation, supplier))
++
++    @action(detail=True, methods=["put"])
++    @transaction.atomic
++    def bid(self, request, pk=None):
++        supplier = supplier_for(request.user)
++        quotation = self._lock(pk, supplier)
++        participation = quotation.tender_bids.filter(supplier=supplier).first()
++        if participation is None:
++            raise ValidationError("Confirme sua participação antes de enviar uma proposta.")
++        serializer = TenderBidWrite(data=request.data)
++        serializer.is_valid(raise_exception=True)
++        data = dict(serializer.validated_data, supplier_id=supplier.pk)
++        data["offers"] = [offer for offer in data["offers"] if offer["unit_price"] is not None]
++        if not data["offers"]:
++            raise ValidationError("Informe um preço unitário para pelo menos um item.")
++        participation.offer = validate_quotes(quotation, [data])[0]
++        participation.submitted_at = timezone.now()
++        participation.save(update_fields=["offer", "submitted_at"])
++        return Response(self._detail(quotation, supplier))
+diff --git a/quotation_maps/urls.py b/quotation_maps/urls.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/urls.py
+@@ -0,0 +1,11 @@
++from rest_framework.routers import SimpleRouter
++
++from .views import MapView, SupplierRegistryView, SupplierView
++from .tender import TenderView
++
++router = SimpleRouter()
++router.register("suppliers", SupplierView, basename="quotation-supplier")
++router.register("supplier-registry", SupplierRegistryView, basename="supplier-registry")
++router.register("tenders", TenderView, basename="quotation-tender")
++router.register("", MapView, basename="quotation-map")
++urlpatterns = router.urls
+diff --git a/quotation_maps/views.py b/quotation_maps/views.py
+new file mode 100644
+--- /dev/null
++++ b/quotation_maps/views.py
+@@ -0,0 +1,251 @@
++from decimal import Decimal, ROUND_HALF_UP
++
++from django.db import transaction
++from django.db.models import Q
++from django.shortcuts import get_object_or_404
++from django.utils import timezone
++from rest_framework import mixins, viewsets
++from rest_framework.decorators import action
++from rest_framework.exceptions import APIException, ValidationError
++from rest_framework.pagination import PageNumberPagination
++from rest_framework.permissions import BasePermission
++from rest_framework.response import Response
++
++from .models import PurchaseOrder, QuotationMap, Supplier
++from .serializers import MapRead, MapSummary, MapWrite, SupplierRead, SupplierWrite, TenderPublish, VersionWrite
++from .services import can_manage, resolve_ready
++
++
++Status = QuotationMap.Status
++
++
++class ManageQuotations(BasePermission):
++    def has_permission(self, request, view):
++        return can_manage(request.user)
++
++
++class Pagination(PageNumberPagination):
++    page_size = 20
++    page_size_query_param = "page_size"
++    max_page_size = 100
++
++
++class Conflict(APIException):
++    status_code = 409
++    default_detail = "O mapa foi alterado. Reabra o mapa antes de continuar."
++
++
++class SupplierView(mixins.ListModelMixin, viewsets.GenericViewSet):
++    permission_classes = [ManageQuotations]
++    serializer_class = SupplierRead
++    pagination_class = Pagination
++
++    def get_queryset(self):
++        search = self.request.query_params.get("search", "").strip()
++        return Supplier.objects.filter(active=True).filter(
++            Q(name__icontains=search) | Q(trade_name__icontains=search) | Q(document__icontains=search) | Q(contact__icontains=search)
++        ).order_by("name", "pk")
++
++
++class SupplierRegistryView(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
++                           mixins.UpdateModelMixin, viewsets.GenericViewSet):
++    permission_classes = [ManageQuotations]
++    serializer_class = SupplierWrite
++    pagination_class = Pagination
++
++    def get_queryset(self):
++        search = self.request.query_params.get("search", "").strip()
++        return Supplier.objects.filter(
++            Q(name__icontains=search) | Q(trade_name__icontains=search) | Q(document__icontains=search) | Q(contact__icontains=search)
++        ).order_by("name", "pk")
++
++    @action(detail=False, methods=["get"], url_path="portal-profiles")
++    def portal_profiles(self, request):
++        from accounts.models import Supplier as PortalProfile
++        search = request.query_params.get("search", "").strip()
++        profiles = PortalProfile.objects.filter(is_active=True, user__is_active=True, user__user_type="FORNECEDOR")
++        profiles = profiles.filter(
++            Q(legal_name__icontains=search) | Q(trade_name__icontains=search) |
++            Q(user__name__icontains=search) | Q(document__icontains=search)
++        ).select_related("user", "quotation_supplier").order_by("pk")
++        page = self.paginate_queryset(profiles)
++        return self.get_paginated_response([dict(id=row.pk, name=str(row), document=row.document,
++                                                 linked_supplier=row.quotation_supplier.pk
++                                                 if hasattr(row, "quotation_supplier") else None) for row in page])
++
++
++def price_for(item, offer):
++    return (Decimal(item["quantity"]) * Decimal(offer["unit_price"]) *
++            (item["period"] or 1)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
++
++
++def validate_quotes(quotation, quotes):
++    items = {item["id"]: item for item in quotation.items}
++    supplier_ids = [quote["supplier_id"] for quote in quotes]
++    if len(supplier_ids) != len(set(supplier_ids)):
++        raise ValidationError("Cada fornecedor pode aparecer uma única vez.")
++    previous = {quote["supplier"]["id"]: quote["supplier"] for quote in quotation.quotes}
++    suppliers = Supplier.objects.filter(Q(active=True) | Q(pk__in=previous)).in_bulk(supplier_ids)
++    selected_items = set()
++    normalized = []
++    for quote in quotes:
++        supplier = suppliers.get(quote["supplier_id"])
++        if supplier is None:
++            raise ValidationError("Fornecedor inválido ou inativo.")
++        supplier_snapshot = dict(previous.get(supplier.pk) or SupplierRead(supplier).data)
++        supplier_snapshot.update({field: quote[field] for field in ("contact", "phone", "email") if field in quote})
++        offers = []
++        seen = set()
++        for offer in quote["offers"]:
++            item_id = offer["item_id"]
++            item = items.get(item_id)
++            if item is None or item_id in seen:
++                raise ValidationError("Item duplicado ou fora da RM aprovada.")
++            seen.add(item_id)
++            price, available = offer["unit_price"], offer["available_quantity"]
++            if offer["selected"]:
++                if item_id in selected_items or price is None:
++                    raise ValidationError("Escolha uma oferta com preço por item.")
++                if available is not None and available < Decimal(item["quantity"]):
++                    raise ValidationError(f"Quantidade insuficiente para {item['description']}.")
++                selected_items.add(item_id)
++            offers.append(dict(offer, unit_price=str(price) if price is not None else None,
++                               available_quantity=str(available) if available is not None else None))
++        terms = {key: quote[key] for key in ("payment", "delivery", "validity", "notes")}
++        terms.update(quoted_on=quote["quoted_on"].isoformat() if quote["quoted_on"] else None,
++                     freight=str(quote["freight"]), discount=str(quote["discount"]))
++        normalized.append(dict(supplier=supplier_snapshot, offers=offers, **terms))
++    return normalized
++
++
++def order_data(quotation):
++    items = {item["id"]: item for item in quotation.items}
++    for quote in quotation.quotes:
++        lines = [
++            dict(items[offer["item_id"]], unit_price=offer["unit_price"], brand=offer["brand"],
++                 quote_notes=offer["notes"], total=str(price_for(items[offer["item_id"]], offer)))
++            for offer in quote["offers"] if offer["selected"]
++        ]
++        if not lines:
++            continue
++        terms = {key: value for key, value in quote.items() if key not in ("supplier", "offers")}
++        total = sum(Decimal(line["total"]) for line in lines) + Decimal(terms["freight"]) - Decimal(terms["discount"])
++        if total < 0:
++            raise ValidationError(f"Desconto superior ao total de {quote['supplier']['name']}.")
++        yield dict(supplier_id=quote["supplier"]["id"], supplier_snapshot=quote["supplier"],
++                   lines=lines, terms=terms, total=total)
++
++
++class MapView(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
++    permission_classes = [ManageQuotations]
++    pagination_class = Pagination
++    lookup_value_regex = r"[0-9]+"
++
++    def get_serializer_class(self):
++        return MapSummary if self.action == "list" else MapRead
++
++    def get_queryset(self):
++        queryset = QuotationMap.objects.select_related("requisition__proposal")
++        if self.action != "list":
++            return queryset.prefetch_related("orders")
++        params = self.request.query_params
++        fields = {"code": "code", "pc": "requisition__proposal__code",
++                  "rm": "requisition__number", "work": "requisition__proposal__work_name"}
++        if search := params.get("search", "").strip():
++            query = Q()
++            for field in fields.values():
++                query |= Q(**{f"{field}__icontains": search})
++            queryset = queryset.filter(query)
++        for key, field in fields.items():
++            if value := params.get(key, "").strip():
++                queryset = queryset.filter(**{f"{field}__icontains": value})
++        if status := params.get("status"):
++            queryset = queryset.filter(status=status)
++        return queryset.order_by("-created_at", "-pk")
++
++    def _locked(self, pk, request, serializer=VersionWrite, *, allow_ordered=False):
++        data = serializer(data=request.data)
++        data.is_valid(raise_exception=True)
++        # Mesmo lock da RM antes de travar o mapa. Evita corrida com cancelamento.
++        from material_requisitions.models import MaterialRequisition
++        reference = get_object_or_404(QuotationMap.objects.only("requisition_id"), pk=pk)
++        rm = MaterialRequisition.objects.select_for_update().get(pk=reference.requisition_id)
++        quotation = QuotationMap.objects.select_for_update().get(pk=pk)
++        if allow_ordered and quotation.status == Status.ORDERED:
++            return quotation, data.validated_data
++        if quotation.version != data.validated_data["version"]:
++            raise Conflict()
++        if rm.cancelled_at or rm.approved_revision_id != quotation.approved_revision_id:
++            raise Conflict("A RM de origem precisa estar aprovada.")
++        return quotation, data.validated_data
++
++    def _save(self, quotation, status):
++        quotation.status = status
++        quotation.version += 1
++        quotation.save(update_fields=["status", "version", "quotes", "notes", "tender_opened_at", "tender_closed_at", "tender_deadline"])
++        return Response(MapRead(quotation).data)
++
++    @transaction.atomic
++    def partial_update(self, request, pk=None):
++        quotation, data = self._locked(pk, request, MapWrite)
++        if quotation.status not in (Status.READY, Status.DRAFT):
++            raise Conflict("O mapa já foi encerrado.")
++        if quotation.tender_opened_at and not quotation.tender_closed_at:
++            raise Conflict("Encerre o leilão reverso antes de editar a cotação.")
++        quotation.quotes = validate_quotes(quotation, data["quotes"])
++        quotation.notes = data["notes"]
++        resolve_ready(quotation.pk)
++        return self._save(quotation, Status.DRAFT)
++
++    @action(detail=True, methods=["post"])
++    @transaction.atomic
++    def finalize(self, request, pk=None):
++        quotation, _ = self._locked(pk, request)
++        if quotation.status != Status.DRAFT:
++            raise Conflict("Salve a cotação antes de finalizar.")
++        if quotation.tender_opened_at and not quotation.tender_closed_at:
++            raise Conflict("Encerre o leilão reverso antes de finalizar.")
++        if not 4 <= len(quotation.quotes) <= 6:
++            raise ValidationError("Selecione de 4 a 6 fornecedores para finalizar.")
++        chosen = {offer["item_id"] for quote in quotation.quotes for offer in quote["offers"] if offer["selected"]}
++        if chosen != {item["id"] for item in quotation.items} or not chosen:
++            raise ValidationError("Escolha um fornecedor para cada item da RM.")
++        list(order_data(quotation))
++        return self._save(quotation, Status.FINAL)
++
++    @action(detail=True, methods=["post"], url_path="publish-tender")
++    @transaction.atomic
++    def publish_tender(self, request, pk=None):
++        quotation, data = self._locked(pk, request, TenderPublish)
++        if quotation.status not in (Status.READY, Status.DRAFT) or quotation.tender_opened_at:
++            raise Conflict("Este mapa não pode abrir outro leilão.")
++        quotation.tender_opened_at = timezone.now()
++        quotation.tender_deadline = data["deadline"]
++        resolve_ready(quotation.pk)
++        return self._save(quotation, Status.DRAFT)
++
++    @action(detail=True, methods=["post"], url_path="close-tender")
++    @transaction.atomic
++    def close_tender(self, request, pk=None):
++        quotation, _ = self._locked(pk, request)
++        if quotation.status != Status.DRAFT or not quotation.tender_opened_at or quotation.tender_closed_at:
++            raise Conflict("Este mapa não tem leilão aguardando encerramento.")
++        quotes = {quote["supplier"]["id"]: quote for quote in quotation.quotes}
++        for bid in quotation.tender_bids.exclude(offer__isnull=True).order_by("pk"):
++            quotes[bid.supplier_id] = bid.offer
++        quotation.quotes = list(quotes.values())
++        quotation.tender_closed_at = timezone.now()
++        return self._save(quotation, Status.DRAFT)
++
++    @action(detail=True, methods=["post"], url_path="generate-orders")
++    @transaction.atomic
++    def generate_orders(self, request, pk=None):
++        quotation, _ = self._locked(pk, request, allow_ordered=True)
++        if quotation.status == Status.ORDERED:
++            return Response(MapRead(quotation).data)
++        if quotation.status != Status.FINAL:
++            raise Conflict("Finalize o mapa antes de gerar ordens de compra.")
++        PurchaseOrder.objects.bulk_create(
++            PurchaseOrder(quotation_map=quotation, **data) for data in order_data(quotation)
++        )
++        return self._save(quotation, Status.ORDERED)
