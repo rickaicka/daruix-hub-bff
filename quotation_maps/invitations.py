@@ -166,7 +166,6 @@ def _send_bid_invitation(bid):
         logo.add_header("Content-ID", "<daruix-mark>")
         logo.add_header("Content-Disposition", "inline", filename="daruix-mark.png")
         email.attach(logo)
-        email.mixed_subtype = "related"
         email.send(fail_silently=False)
     except Exception as exc:
         logger.exception("Erro no envio do convite %s", bid.pk)
