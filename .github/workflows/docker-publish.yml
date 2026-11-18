@@ -1,4 +1,3 @@
-
 name: Build e Deploy - Daruix Hub BFF
 
 on:
@@ -24,11 +23,9 @@ jobs:
   build-and-push:
     name: Build e publicacao GHCR
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,66 +67,80 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
-
     steps:
-      - name: Diagnosticar SSH
+      - name: Configurar SSH e verificar identidade da VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_FINGERPRINT: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
         run: |
-          echo "Fingerprint configurado:"
-          printf '%s\n' "$VPS_FINGERPRINT"
+          set -euo pipefail
+          : "${VPS_HOST:?Configure VPS_HOST no environment production}"
+          : "${VPS_USER:?Configure VPS_USER no environment production}"
+          : "${VPS_SSH_KEY:?Configure VPS_SSH_KEY no environment production}"
 
-          echo "Fingerprints apresentados pela VPS:"
-          ssh-keyscan -T 10 -p 22 \
-            -t ed25519,ecdsa,rsa "$VPS_HOST" 2>/dev/null \
-            | ssh-keygen -lf - -E sha256
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          ssh-keygen -y -P '' -f "$HOME/.ssh/deploy_key" > /dev/null
+
+          # Fingerprint ED25519 confirmado no console da VPS em 18/11/2026.
+          # A chave obtida pela rede só é aceita se corresponder a ele.
+          expected='SHA256:5PMmoD2uW6V406XLTnVtACa6236J5qTZSN38pba4uk0'
+          ssh-keyscan -T 10 -p "$VPS_PORT" -t ed25519 "$VPS_HOST" \
+            2>/dev/null > "$HOME/.ssh/known_hosts"
+          test -s "$HOME/.ssh/known_hosts" || {
+            echo '::error::Nao foi possivel obter a chave ED25519 da VPS.'
+            exit 1
+          }
+          actual="$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk 'NR==1 {print $2}')"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Identidade SSH da VPS diferente da chave verificada. Recebida: $actual"
+            exit 1
+          fi
+          echo 'Identidade SSH da VPS verificada.'
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
-          port: 22
-          command_timeout: 10m
-          script: |
-            set -eu
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/deploy_key" -p "$VPS_PORT" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=3 \
+            "$VPS_USER@$VPS_HOST" 'bash -se' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/daruix-hub
 
-            cd /opt/daruix-hub
+          docker compose -f compose.yml -f compose.source.yml pull bff
+          docker compose -f compose.yml -f compose.source.yml up -d --no-deps --force-recreate bff
 
-            docker compose \
-              -f compose.yml \
-              -f compose.source.yml \
-              pull bff
-
-            docker compose \
-              -f compose.yml \
-              -f compose.source.yml \
-              up -d --no-deps --force-recreate bff
-
-            echo "Aguardando healthcheck..."
-
-            for i in $(seq 1 30); do
-              STATUS=$(docker inspect \
-                -f '{{.State.Health.Status}}' \
-                daruix-hub-bff)
-
-              if [ "$STATUS" = "healthy" ]; then
-                echo "BFF atualizado e saudavel"
+          echo 'Aguardando healthcheck...'
+          for i in $(seq 1 30); do
+            status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' daruix-hub-bff)"
+            case "$status" in
+              healthy)
+                echo 'BFF atualizado e saudavel'
                 exit 0
-              fi
-
-              if [ "$STATUS" = "unhealthy" ]; then
-                echo "BFF unhealthy"
+                ;;
+              unhealthy|none)
+                echo "Healthcheck invalido: $status"
                 docker logs --tail=80 daruix-hub-bff
                 exit 1
-              fi
-
-              sleep 5
-            done
-
-            echo "Timeout aguardando healthcheck"
-            docker logs --tail=80 daruix-hub-bff
-            exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          echo 'Timeout aguardando healthcheck'
+          docker logs --tail=80 daruix-hub-bff
+          exit 1
+          REMOTE
