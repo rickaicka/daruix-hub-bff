@@ -131,7 +131,7 @@ def _send_bid_invitation(bid):
     map_number = re.sub(r"^MC", "", bid.quotation.code, flags=re.IGNORECASE)
     expires_label = timezone.localtime(bid.expires_at).strftime("%d/%m/%Y às %H:%M")
     deadline_label = timezone.localtime(bid.quotation.tender_deadline).strftime("%d/%m/%Y às %H:%M")
-    subject = f"Daruix Hub | Convite para o Mapa de Concorrência nº {map_number}"
+    subject = f"SGO Web | Convite para o Mapa de Concorrência nº {map_number}"
     context = {
         "supplier_name": bid.supplier.name,
         "map_number": map_number,
