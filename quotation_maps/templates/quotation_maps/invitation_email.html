@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Daruix Hub · Convite para Mapa de Concorrência</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f8;color:#252831;font-family:Quicksand,'Trebuchet MS',Arial,sans-serif;">
+  <div style="display:none;font-size:1px;line-height:1px;color:#f4f5f8;max-height:0;max-width:0;opacity:0;overflow:hidden;">Convite para participar do Mapa de Concorrência nº {{ map_number }}. Consulte o prazo e acesse sua cotação.</div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background:#f4f5f8;border-collapse:collapse;">
+    <tr><td align="center" style="padding:30px 14px 40px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;background:#ffffff;border-collapse:separate;border-spacing:0;border:1px solid #e5e7ed;border-radius:14px;overflow:hidden;">
+        <tr><td style="height:6px;background:#c00d0e;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="padding:28px 34px 16px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+            <tr>
+              <td width="54" valign="middle"><img src="cid:daruix-mark" width="44" height="44" alt="D." style="display:block;width:44px;height:44px;object-fit:contain;border:0;color:#c00d0e;font-weight:bold;"></td>
+              <td valign="middle" style="padding-left:10px;"><span style="font-family:'Science Gothic','Arial Black',Arial,sans-serif;font-size:21px;font-weight:900;letter-spacing:0.4px;color:#252831;">DARUIX <span style="color:#c00d0e;font-size:15px;">Hub</span></span><br><span style="font-size:12px;color:#7a8091;">Área de Compras · Portal de fornecedores</span></td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:12px 34px 0;">
+          <p style="margin:0 0 12px;font-size:12px;letter-spacing:2px;font-weight:800;color:#c00d0e;">CONVITE EXCLUSIVO</p>
+          <h1 style="margin:0;font-family:'Science Gothic','Arial Black',Arial,sans-serif;font-size:29px;line-height:1.25;letter-spacing:-0.4px;font-weight:900;color:#252831;">Mapa de Concorrência</h1>
+          <p style="margin:12px 0 0;font-size:17px;line-height:1.6;color:#252831;">Olá, <strong>{{ supplier_name }}</strong>.</p>
+          <p style="margin:8px 0 0;font-size:15px;line-height:1.65;color:#525a6b;">Convite para participar do <strong>Mapa de Concorrência nº {{ map_number }}</strong>.</p>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.65;color:#525a6b;">Acesse o portal exclusivo para consultar os itens solicitados e apresentar sua proposta comercial.</p>
+        </td></tr>
+        <tr><td style="padding:24px 34px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f7fa;border:1px solid #e5e7ed;border-radius:10px;border-collapse:separate;">
+            <tr><td style="padding:19px 22px;">
+              <p style="font-size:12px;font-weight:800;color:#596274;margin:0 0 15px;letter-spacing:1px;">SUAS CREDENCIAIS TEMPORÁRIAS</p>
+              <p style="margin:0 0 13px;font-size:13px;line-height:1.6;color:#626b7d;">Usuário<br><strong style="font-family:Consolas,'Courier New',monospace;font-size:16px;color:#252831;">{{ username }}</strong></p>
+              <p style="margin:0;font-size:13px;line-height:1.6;color:#626b7d;">Senha<br><strong style="font-family:Consolas,'Courier New',monospace;font-size:16px;color:#252831;overflow-wrap:anywhere;word-break:break-word;">{{ password }}</strong></p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding:26px 34px 18px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
+            <tr><td align="center" bgcolor="#c00d0e" style="background:#c00d0e;border-radius:7px;"><a href="{{ invitation_url }}" style="display:inline-block;padding:15px 28px;font-family:'Arial Black',Arial,sans-serif;font-size:14px;line-height:1.3;font-weight:800;letter-spacing:0.2px;color:#ffffff;text-decoration:none;">Acessar Mapa de Concorrência</a></td></tr>
+          </table>
+          <p style="margin:15px 0 0;font-size:12px;color:#72798a;line-height:1.6;">Se o botão não funcionar, copie o endereço abaixo no navegador:</p>
+          <p style="margin:6px 0 0;font-size:11px;line-height:1.6;overflow-wrap:anywhere;word-break:break-all;"><a href="{{ invitation_url }}" style="color:#a60220;text-decoration:underline;">{{ invitation_url }}</a></p>
+        </td></tr>
+        <tr><td style="padding:10px 34px 22px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e6e8ed;border-collapse:collapse;">
+            <tr><td style="padding-top:20px;font-size:13px;line-height:1.7;color:#525a6b;">
+              <strong style="color:#252831;">Expiração do acesso:</strong> {{ expires_at_label }}<br>
+              <strong style="color:#252831;">Prazo para apresentar proposta:</strong> {{ deadline_label }}
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:17px 34px 23px;background:#fafbfc;border-top:1px solid #e5e7ed;">
+          <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#606a7b;">Este convite é individual. Você poderá consultar somente os itens do mapa e sua própria proposta.</p>
+          <p style="margin:0;font-size:12px;line-height:1.6;color:#7d8595;">Não compartilhe seu link, usuário ou senha. Se não reconhece este convite, desconsidere esta mensagem.</p>
+        </td></tr>
+      </table>
+      <p style="margin:18px 0 0;color:#9097a7;font-size:11px;line-height:1.6;">© Daruix Hub · Comunicação automática da equipe de Compras<br>Não responda diretamente a este e-mail.</p>
+    </td></tr>
+  </table>
+</body>
+</html>

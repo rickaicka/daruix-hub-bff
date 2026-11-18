@@ -4,7 +4,11 @@ import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from email.mime.image import MIMEImage
+from pathlib import Path
+import re
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -123,15 +127,47 @@ def _send_bid_invitation(bid):
     bid = TenderBid.objects.select_related("quotation", "supplier").get(pk=bid.pk)
     password, token = create_credential(bid)
     url = f"{_site_url()}/hub/obras/leilao-reverso?mapa={bid.quotation_id}&convite={urllib.parse.quote(token)}"
-    message = (f"Olá, {bid.supplier.name}.\n\nConvite para cotar o mapa {bid.quotation.code}.\n"
-               f"Usuário temporário: {bid.temp_username}\nSenha temporária: {password}\n"
-               f"Link exclusivo: {url}\n"
-               f"Expiração das credenciais: {timezone.localtime(bid.expires_at):%d/%m/%Y %H:%M}.\n"
-               f"Prazo do mapa: {timezone.localtime(bid.quotation.tender_deadline):%d/%m/%Y %H:%M}.\n\n"
-               "Você só poderá consultar os itens do mapa e sua própria proposta.\n")
+    # O número público não exibe o prefixo interno MC.
+    map_number = re.sub(r"^MC", "", bid.quotation.code, flags=re.IGNORECASE)
+    expires_label = timezone.localtime(bid.expires_at).strftime("%d/%m/%Y às %H:%M")
+    deadline_label = timezone.localtime(bid.quotation.tender_deadline).strftime("%d/%m/%Y às %H:%M")
+    subject = f"Daruix Hub | Convite para o Mapa de Concorrência nº {map_number}"
+    context = {
+        "supplier_name": bid.supplier.name,
+        "map_number": map_number,
+        "username": bid.temp_username,
+        "password": password,
+        "invitation_url": url,
+        "expires_at_label": expires_label,
+        "deadline_label": deadline_label,
+    }
+    plain_text = (
+        f"Olá, {bid.supplier.name}.\n\n"
+        f"Convite para participar do Mapa de Concorrência nº {map_number}.\n\n"
+        f"Usuário temporário: {bid.temp_username}\n"
+        f"Senha temporária: {password}\n"
+        f"Acessar convite: {url}\n"
+        f"Expiração das credenciais: {expires_label}\n"
+        f"Prazo para enviar sua proposta: {deadline_label}\n\n"
+        "Você poderá consultar somente os itens do mapa e sua própria proposta.\n"
+        "Caso não reconheça este convite, desconsidere esta mensagem.\n"
+    )
     try:
-        send_mail(f"Daruix Hub — Convite {bid.quotation.code}", message,
-                  settings.DEFAULT_FROM_EMAIL, [bid.supplier.email], fail_silently=False)
+        html_body = render_to_string("quotation_maps/invitation_email.html", context)
+        email = EmailMultiAlternatives(
+            subject=subject, body=plain_text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[bid.supplier.email],
+        )
+        email.attach_alternative(html_body, "text/html")
+        logo_path = Path(__file__).resolve().parent / "email_assets" / "daruix-mark.png"
+        with logo_path.open("rb") as logo_file:
+            logo = MIMEImage(logo_file.read(), _subtype="png")
+        logo.add_header("Content-ID", "<daruix-mark>")
+        logo.add_header("Content-Disposition", "inline", filename="daruix-mark.png")
+        email.attach(logo)
+        email.mixed_subtype = "related"
+        email.send(fail_silently=False)
     except Exception as exc:
         logger.exception("Erro no envio do convite %s", bid.pk)
         bid.email_error = f"{type(exc).__name__}: {str(exc)[:300]}"
