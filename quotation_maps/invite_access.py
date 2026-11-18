@@ -8,6 +8,7 @@ from rest_framework import authentication, exceptions, permissions, serializers,
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.response import Response
 from .models import TenderBid
+from accounts.services.permission_service import user_has_permission
 
 DURATION = timedelta(hours=72)
 
@@ -55,12 +56,19 @@ class InvitationAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed("Convite expirado ou revogado.")
         if bid.supplier.portal_profile is None or not bid.supplier.portal_profile.user.is_active:
             raise exceptions.AuthenticationFailed("Fornecedor sem conta ativa.")
-        return bid.supplier.portal_profile.user, bid
+        user = bid.supplier.portal_profile.user
+        if not user_has_permission(user, "reverse_auction.participate"):
+            raise exceptions.PermissionDenied("Sem permissão para participar do leilão reverso.")
+        return user, bid
 
 
 class InvitationOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        return bool(request.auth and isinstance(request.auth, TenderBid) and is_valid(request.auth))
+        return bool(
+            request.auth and isinstance(request.auth, TenderBid)
+            and is_valid(request.auth)
+            and user_has_permission(request.user, "reverse_auction.participate")
+        )
 
 
 class LoginSerializer(serializers.Serializer):
@@ -86,10 +94,12 @@ def login_invitation(request):
            .first())
     if bid is None or not is_valid(bid) or not check_password(values["password"], bid.temp_password_hash):
         raise exceptions.AuthenticationFailed("Convite inválido, encerrado ou expirado.")
+    user = bid.supplier.portal_profile.user if bid.supplier.portal_profile_id else None
+    if not user or not user_has_permission(user, "reverse_auction.participate"):
+        raise exceptions.PermissionDenied("Fornecedor sem permissão de participação.")
     # Um novo login revoga imediatamente o token da sessão anterior.
     token = secrets.token_urlsafe(40)
     bid.access_token_hash = digest(token)
     bid.save(update_fields=["access_token_hash"])
     return Response({"access_token": token, "token_type": "Invitation", "expires_at": bid.expires_at,
-                     "quotation_id": bid.quotation_id, "supplier_id": bid.supplier_id,
-                     "supplier_name": bid.supplier.name, "supplier_email": bid.supplier.email})
+                     "quotation_id": bid.quotation_id, "supplier_id": bid.supplier_id})

@@ -16,7 +16,6 @@ from rest_framework.exceptions import ValidationError
 
 from accounts.models import Supplier as PortalSupplier
 from .models import Supplier, TenderBid, QuotationMap
-from .quote_sync import merge_supplier_bid
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +28,46 @@ def _api_url():
     return getattr(settings, "HUB_API_PUBLIC_URL", _site_url()).rstrip("/")
 
 
+
+def _assign_supplier_participation(user):
+    """Concede exclusivamente a permissão de participação ao perfil de fornecedor.
+
+    O backend utiliza permissão por grupo; não concede acesso a outras funções.
+    """
+    from accounts.models import UserGroup, Permission, GroupPermission
+    from accounts.services.permission_service import user_has_permission
+
+    if user.user_type != "FORNECEDOR" or not user.is_active:
+        raise ValidationError("A conta vinculada não é um fornecedor ativo.")
+    if user_has_permission(user, "reverse_auction.participate"):
+        return
+    if user.group_id:
+        raise ValidationError(
+            "A conta já pertence a outro grupo sem a permissão reverse_auction.participate. "
+            "Revise o grupo do fornecedor antes de enviar o convite."
+        )
+    group, _ = UserGroup.objects.get_or_create(
+        user_type="FORNECEDOR", name="LEILAO_REVERSO_TEMPORARIO",
+        defaults={"description": "Acesso restrito por convite a leilões reversos", "is_active": True},
+    )
+    permission, _ = Permission.objects.get_or_create(
+        code="reverse_auction.participate",
+        defaults={"module": "reverse_auction", "description": "Participar de leilão reverso por convite", "is_active": True},
+    )
+    GroupPermission.objects.get_or_create(
+        group=group, permission=permission, defaults={"is_active": True},
+    )
+    user.group = group
+    user.save(update_fields=["group"])
+
+
 def ensure_supplier_account(supplier):
     """Criar somente contas de fornecedor; nunca vincular conta de outro tipo pelo e-mail."""
     if supplier.portal_profile_id:
         profile = supplier.portal_profile
         if not profile.is_active or not profile.user.is_active or profile.user.user_type != "FORNECEDOR":
             raise ValidationError(f"Conta do fornecedor {supplier.name} está inativa ou inválida.")
+        _assign_supplier_participation(profile.user)
         return profile.user
     email = supplier.email.strip().lower()
     if not email:
@@ -56,6 +89,7 @@ def ensure_supplier_account(supplier):
                                             document=supplier.document[:20] or None)
     supplier.portal_profile = profile
     supplier.save(update_fields=["portal_profile"])
+    _assign_supplier_participation(user)
     return user
 
 
@@ -132,9 +166,11 @@ def close_expired_tender(quotation):
             or quotation.status != QuotationMap.Status.DRAFT
             or quotation.tender_deadline is None or quotation.tender_deadline > timezone.now()):
         return False
+    quotes = {int(quote["supplier"]["id"]): quote for quote in quotation.quotes}
     for bid in quotation.tender_bids.filter(submitted_at__isnull=False).exclude(offer__isnull=True).order_by("pk"):
-        # Reconciliar ofertas antigas sem sobrescrever ajustes manuais.
-        merge_supplier_bid(quotation, bid)
+        # O backend já valida ofertas no envio; ao fechar mantemos somente as propostas recebidas.
+        quotes[bid.supplier_id] = bid.offer
+    quotation.quotes = list(quotes.values())
     quotation.tender_closed_at = timezone.now()
     quotation.version += 1
     quotation.save(update_fields=["quotes", "tender_closed_at", "version"])
