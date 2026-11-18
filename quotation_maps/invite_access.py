@@ -102,4 +102,5 @@ def login_invitation(request):
     bid.access_token_hash = digest(token)
     bid.save(update_fields=["access_token_hash"])
     return Response({"access_token": token, "token_type": "Invitation", "expires_at": bid.expires_at,
-                     "quotation_id": bid.quotation_id, "supplier_id": bid.supplier_id})
+                     "quotation_id": bid.quotation_id, "supplier_id": bid.supplier_id,
+                     "supplier_name": bid.supplier.name, "supplier_email": bid.supplier.email})
