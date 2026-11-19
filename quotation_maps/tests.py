@@ -51,3 +51,19 @@ class TenderLifecycleTests(SimpleTestCase):
         m.quotes = [{"supplier": {"id": 1}}] * 4
         with self.assertRaises(ValidationError):
             invite_selected(m)
+
+
+class QuotationMapSequenceTests(SimpleTestCase):
+    def test_first_map_has_three_digit_sequence(self):
+        from .services import make_map_code
+        self.assertEqual(make_map_code("PC26105", 1), "MC26105-001")
+
+    def test_next_maps_for_same_pc(self):
+        from .services import make_map_code
+        self.assertEqual(make_map_code("PC26105", 2), "MC26105-002")
+        self.assertEqual(make_map_code("PC26105", 12), "MC26105-012")
+
+    def test_invalid_sequence(self):
+        from .services import make_map_code
+        with self.assertRaises(ValueError):
+            make_map_code("PC26105", 0)

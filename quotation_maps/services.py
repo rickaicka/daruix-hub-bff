@@ -14,6 +14,13 @@ ROUTE = "/hub/obras/mapas-cotacao"
 PERMISSION = "quotation_map.manage"
 
 
+def make_map_code(pc_code: str, sequence: int) -> str:
+    """Identificador do mapa: sequencial de três dígitos por PC, começando em 001."""
+    if not pc_code.startswith("PC") or not pc_code[2:].isdigit() or sequence < 1:
+        raise ValueError("PC ou sequencial do Mapa de Concorrência inválido.")
+    return f"MC{pc_code[2:]}-{sequence:03d}"
+
+
 @transaction.atomic
 def create_for_approval(revision):
     rm = revision.requisition
@@ -21,9 +28,8 @@ def create_for_approval(revision):
     existing = QuotationMap.objects.filter(requisition=rm).first()
     if existing is not None:
         return existing, False
-    pc = proposal.code.removeprefix("PC")
     last = QuotationMap.objects.filter(requisition__proposal=proposal).aggregate(value=Max("revision_number"))["value"]
-    number = 0 if last is None else last + 1
+    number = 1 if last is None else max(1, last + 1)
     items = MaterialRequisitionItem.objects.filter(section__revision=revision).select_related("section")
     snapshot = [
         dict(id=item.pk, stage=item.section.stage_name, description=item.description, unit=item.unit,
@@ -32,7 +38,7 @@ def create_for_approval(revision):
     ]
     return QuotationMap.objects.get_or_create(
         requisition=rm,
-        defaults=dict(approved_revision=revision, code=f"MC{pc}" if number == 0 else f"MC{pc}-{number:02d}", revision_number=number, items=snapshot),
+        defaults=dict(approved_revision=revision, code=make_map_code(proposal.code, number), revision_number=number, items=snapshot),
     )
 
 
