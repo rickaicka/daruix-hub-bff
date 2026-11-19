@@ -16,6 +16,7 @@ from .serializers import MapRead, MapSummary, MapWrite, SupplierRead, SupplierWr
 from .services import can_manage, resolve_ready
 from .quote_sync import merge_buyer_quotes
 from .invitations import invite_selected, send_invitations, close_expired_tenders, close_expired_tender, resend_invitation
+from .outcome_notifications import prepare_outcome_notifications, dispatch_outcome_notifications
 
 
 Status = QuotationMap.Status
@@ -267,10 +268,9 @@ class MapView(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Generic
         quotation, _ = self._locked(pk, request)
         if quotation.status != Status.DRAFT or not quotation.tender_opened_at or quotation.tender_closed_at:
             raise Conflict("Este mapa não tem leilão aguardando encerramento.")
-        # Encerramento antecipado não é permitido: preserva o prazo informado aos fornecedores.
-        if quotation.tender_deadline > timezone.now():
-            raise Conflict("O leilão ainda está dentro do prazo informado aos fornecedores.")
-        close_expired_tender(quotation)
+        # Encerramento autorizado pelo comprador, inclusive antes do prazo original.
+        # A função incorpora todas as propostas já submetidas e registra o horário real.
+        close_expired_tender(quotation, allow_early=True)
         return Response(MapRead(quotation).data)
 
     @action(detail=True, methods=["post"], url_path="generate-orders")
@@ -319,7 +319,12 @@ class MapView(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Generic
                 quotation_map=quotation, code=code, promised_delivery_at=promised_date, **data
             ))
         PurchaseOrder.objects.bulk_create(orders)
-        return self._save(quotation, Status.ORDERED)
+        # Não enviar mensagens durante a transação: primeiro confirmar todas as OCs.
+        notification_ids = prepare_outcome_notifications(quotation)
+        response = self._save(quotation, Status.ORDERED)
+        if notification_ids:
+            transaction.on_commit(lambda ids=notification_ids: dispatch_outcome_notifications(ids))
+        return response
 
 
 class PurchaseOrderDeliveryView(viewsets.GenericViewSet):

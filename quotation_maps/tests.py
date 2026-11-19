@@ -29,6 +29,13 @@ class TenderLifecycleTests(SimpleTestCase):
         self.assertIsNotNone(m.tender_closed_at)
         m.save.assert_called_once()
 
+    def test_buyer_can_close_before_deadline(self):
+        m = self.fake_map(expired=False)
+        self.assertTrue(close_expired_tender(m, allow_early=True))
+        self.assertIsNotNone(m.tender_closed_at)
+        self.assertEqual(m.version, 3)
+        m.save.assert_called_once()
+
     def test_does_not_close_before_deadline(self):
         m = self.fake_map(expired=False)
         self.assertFalse(close_expired_tender(m))

@@ -195,11 +195,12 @@ def send_invitations(quotation_id, recipients):
         _send_bid_invitation(bid)
 
 
-def close_expired_tender(quotation):
+def close_expired_tender(quotation, *, allow_early=False):
     """Idempotente; chamar sob select_for_update para evitar perda de propostas."""
     if (quotation.tender_opened_at is None or quotation.tender_closed_at is not None
             or quotation.status != QuotationMap.Status.DRAFT
-            or quotation.tender_deadline is None or quotation.tender_deadline > timezone.now()):
+            or quotation.tender_deadline is None
+            or (not allow_early and quotation.tender_deadline > timezone.now())):
         return False
     quotes = {int(quote["supplier"]["id"]): quote for quote in quotation.quotes}
     for bid in quotation.tender_bids.filter(submitted_at__isnull=False).exclude(offer__isnull=True).order_by("pk"):

@@ -90,3 +90,26 @@ class TenderBid(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["quotation", "supplier"], name="unique_tender_bid_per_supplier"),
         ]
+
+
+class TenderOutcomeNotification(models.Model):
+    """Registro idempotente do agradecimento a fornecedor participante não contemplado."""
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pendente"
+        SENDING = "SENDING", "Enviando"
+        SENT = "SENT", "Enviado"
+        FAILED = "FAILED", "Falha"
+
+    quotation = models.ForeignKey(QuotationMap, on_delete=models.PROTECT, related_name="outcome_notifications")
+    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT)
+    recipient_email = models.EmailField(max_length=254)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["quotation", "supplier"], name="unique_tender_outcome_notification"),
+        ]

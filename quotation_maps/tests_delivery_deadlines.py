@@ -9,8 +9,11 @@ class DeliveryDeadlineTests(SimpleTestCase):
         self.assertEqual(parse_delivery_terms("5 dias corridos"), (5, "CALENDAR"))
         self.assertIsNone(parse_delivery_terms("a combinar"))
 
-    def test_business_excludes_weekend(self):
-        self.assertEqual(expected_delivery_date(date(2026, 11, 19), 2, "BUSINESS"), date(2026, 11, 23))
+    def test_business_excludes_weekend_and_national_holiday(self):
+        self.assertEqual(
+            expected_delivery_date(date(2026, 11, 19), 2, "BUSINESS"),
+            date(2026, 11, 24),
+        )
 
     def test_national_holiday(self):
         # 20/11/2026 é feriado nacional e 21-22/11 é fim de semana.
