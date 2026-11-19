@@ -17,20 +17,48 @@ def make_order_code(pc_code: str, sequence: int) -> str:
 
 
 def legacy_last_sequence(pc_code: str) -> int:
-    """Marco obtido de TODAS as OCs legadas, inclusive encerradas.
+    """Resolve marco legado via Bridge; override explícito somente para exceções.
 
-    Defina OC_LEGACY_LAST_BY_PC no settings (dict) ou, se integrado ao
-    settings, parse de variável segura no lado servidor. Valores faltantes
-    devem impedir geração até reconciliação da sequência.
+    O Bridge indisponível ou a resposta ambígua nunca deve produzir zero.
     """
-    mapping = getattr(settings, 'OC_LEGACY_LAST_BY_PC', None)
+    if len(pc_code) != 7 or not pc_code.startswith("PC") or not pc_code[2:].isdigit():
+        raise ValueError("PC inválida para conciliação de OC.")
+    mapping = getattr(settings, "OC_LEGACY_LAST_BY_PC", None)
     if mapping is None:
-        mapping = os.environ.get('OC_LEGACY_LAST_BY_PC', '{}')
+        mapping = os.environ.get("OC_LEGACY_LAST_BY_PC", "{}")
     if isinstance(mapping, str):
-        mapping = json.loads(mapping)
-    if pc_code not in mapping:
-        raise ValueError(f'Sequência legada da {pc_code} não conciliada. Cadastre o último sufixo (0 se não existir).')
-    n = int(mapping[pc_code])
-    if not 0 <= n <= 999:
-        raise ValueError(f'Última sequência legada inválida para {pc_code}.')
-    return n
+        try:
+            mapping = json.loads(mapping)
+        except json.JSONDecodeError as error:
+            raise ValueError("Configuração OC_LEGACY_LAST_BY_PC inválida.") from error
+    if not isinstance(mapping, dict):
+        raise ValueError("Configuração OC_LEGACY_LAST_BY_PC inválida.")
+    if pc_code in mapping:
+        try:
+            n = int(mapping[pc_code])
+        except (ValueError, TypeError) as error:
+            raise ValueError(f"Última sequência legada inválida para {pc_code}.") from error
+        if not 0 <= n <= 999:
+            raise ValueError(f"Última sequência legada inválida para {pc_code}.")
+        return n
+
+    from integrations.legacy_bridge.client import LegacyBridgeClient, LegacyBridgeHttpError
+    try:
+        result = LegacyBridgeClient().last_purchase_order_sequence(pc_code)
+    except LegacyBridgeHttpError as error:
+        raise ValueError(
+            f"Não foi possível conciliar as OCs da {pc_code} via Legacy Bridge: {error}"
+        ) from error
+    if result.get("pc") != pc_code or result.get("source") != "tblOrdemDeCompra":
+        raise ValueError(f"Resposta de conciliação inválida para {pc_code}.")
+    if not isinstance(result.get("found"), bool):
+        raise ValueError(f"Resposta de conciliação inválida para {pc_code}.")
+    raw_count = result.get("matched_orders")
+    raw_sequence = result.get("last_suffix")
+    if type(raw_count) is not int or type(raw_sequence) is not int:
+        raise ValueError(f"Resposta de conciliação inválida para {pc_code}.")
+    if raw_count < 0 or not 0 <= raw_sequence <= 999:
+        raise ValueError(f"Resposta de conciliação inválida para {pc_code}.")
+    if result["found"] != (raw_count > 0) or (raw_count == 0 and raw_sequence != 0):
+        raise ValueError(f"Resposta de conciliação inconsistente para {pc_code}.")
+    return raw_sequence

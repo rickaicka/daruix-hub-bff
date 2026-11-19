@@ -66,6 +66,12 @@ class LegacyBridgeClient:
         )
         return self._expect_dict(payload, "autenticação")
 
+    def last_purchase_order_sequence(self, pc_code: str) -> dict[str, Any]:
+        payload = self._request(
+            "GET", "/v1/purchase-orders/last-sequence", query={"pc": pc_code},
+        )
+        return self._expect_dict(payload, "sequência de ordens de compra")
+
     def list_clients(self, search: str, limit: int) -> list[dict[str, Any]]:
         payload = self._request(
             "GET",
