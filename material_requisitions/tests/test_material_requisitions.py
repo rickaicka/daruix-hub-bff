@@ -2,7 +2,7 @@ import uuid
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from accounts.models import User, UserGroup, Permission, GroupPermission
 from commercial.models import Party, Proposal
@@ -91,6 +91,7 @@ class OperationalRMTests(TestCase):
         self.assertEqual(item['quantity'], quotation.items[0]['quantity'])
         self.assertNotIn('composition_path', quotation.items[0])
 
+    @override_settings(OC_LEGACY_LAST_BY_PC={'PC26001': 0})
     def test_approved_rm_yields_one_quotation_and_orders_only_for_selected_suppliers(self):
         from accounts.models import HubNotification
         from material_requisitions.models import MaterialRequisitionItem
@@ -115,7 +116,7 @@ class OperationalRMTests(TestCase):
         self.assertEqual(notification.recipient_id, self.director.pk)
         self.assertTrue(notification.route.endswith(f'?mapa={quotation.pk}'))
         self.assertTrue(rev['number'].startswith('RM26001-'))
-        self.assertEqual(quotation.code, 'MC26001')
+        self.assertEqual(quotation.code, 'MC26001-001')
         base = '/api/quotation-maps/'
         detail = f'{base}{quotation.pk}/'
         listing = self.client.get(base, {'pc': '26001', 'status': 'READY'})
@@ -153,10 +154,13 @@ class OperationalRMTests(TestCase):
                              {quote['supplier_id'] for quote in quotes[:3]})
 
     def test_tender_exposes_only_public_items_and_current_supplier_offer(self):
+        """Portal aceita exclusivamente credenciais de convite e isola fornecedores."""
         from datetime import timedelta
         from django.utils import timezone
         from accounts.models import Supplier as Profile
-        from quotation_maps.models import QuotationMap
+        from quotation_maps.models import QuotationMap, Supplier, TenderBid
+        from quotation_maps.invite_access import create_credential
+        from quotation_maps.invitations import close_expired_tenders
 
         rev = self.post(self.ready(), 'submit')
         permission = Permission.objects.get(code='quotation_map.manage')
@@ -167,62 +171,111 @@ class OperationalRMTests(TestCase):
         base = '/api/quotation-maps/'
         internal = f'{base}{quotation.pk}/'
         external = f'{base}tenders/{quotation.pk}/'
-        profiles = []
-        for i in range(2):
-            user = User.objects.create_user(name=f'Fornecedor {i}', username=f'vendor{i}',
-                                           email=f'vendor{i}@test.local', user_type='FORNECEDOR')
+
+        # A publicação exige 4 a 6 convidados com e-mail cadastrado.
+        suppliers = []
+        for i in range(4):
+            user = User.objects.create_user(
+                name=f'Fornecedor {i}', username=f'vendor{i}',
+                email=f'vendor{i}@test.local', user_type='FORNECEDOR',
+            )
             profile = Profile.objects.create(user=user, legal_name=user.name)
-            response = self.client.post(base + 'supplier-registry/',
-                                        {'name': user.name, 'portal_profile': profile.pk}, format='json')
-            self.assertEqual(response.status_code, 201, response.data)
-            profiles.append(user)
-        response = self.client.patch(internal, {'version': 1, 'quotes': [], 'notes': 'Interno'}, format='json')
-        self.assertEqual(response.status_code, 200, response.data)
-        self.client.force_authenticate(profiles[0])
-        self.assertEqual(self.client.get(external).status_code, 404)
+            supplier = Supplier.objects.create(
+                source_key=f'portal-test-{i}', name=user.name,
+                email=user.email, portal_profile=profile,
+            )
+            suppliers.append((user, supplier))
+
+        # Antes da publicação, mesmo um usuário fornecedor autenticado por JWT
+        # não tem acesso ao portal de convite nem aos endpoints internos.
+        self.client.force_authenticate(suppliers[0][0])
+        self.assertEqual(self.client.get(external).status_code, 403)
         self.assertEqual(self.client.get(internal).status_code, 403)
         self.assertEqual(self.client.get(base + 'supplier-registry/').status_code, 403)
 
         self.client.force_authenticate(self.director)
-        deadline = (timezone.now() + timedelta(days=1)).isoformat()
-        response = self.client.post(internal + 'publish-tender/',
-                                    {'version': 2, 'deadline': deadline}, format='json')
+        quotes = [{'supplier_id': supplier.pk, 'offers': []}
+                  for _, supplier in suppliers]
+        response = self.client.patch(internal, {
+            'version': 1, 'quotes': quotes, 'notes': 'Interno',
+        }, format='json')
         self.assertEqual(response.status_code, 200, response.data)
-        for i, user in enumerate(profiles):
-            self.client.force_authenticate(user)
+        deadline = (timezone.now() + timedelta(days=2)).isoformat()
+        response = self.client.post(internal + 'publish-tender/', {
+            'version': response.data['version'], 'deadline': deadline,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+
+        credentials = []
+        for user, supplier in suppliers[:2]:
+            participation = TenderBid.objects.get(quotation=quotation, supplier=supplier)
+            password, invitation_token = create_credential(participation)
+            # A rota de login por convite é pública; o acesso às ofertas não é.
+            self.client.force_authenticate(None)
+            self.client.credentials()
+            login = self.client.post(base + 'invitation-login/', {
+                'username': participation.temp_username,
+                'password': password,
+                'invitation_token': invitation_token,
+            }, format='json')
+            self.assertEqual(login.status_code, 200, login.data)
+            credentials.append(login.data['access_token'])
+
+        for i, access_token in enumerate(credentials):
+            self.client.credentials(HTTP_AUTHORIZATION=f'Invitation {access_token}')
             listing = self.client.get(base + 'tenders/')
+            self.assertEqual(listing.status_code, 200, listing.data)
             self.assertEqual(listing.data['count'], 1)
-            detail = self.client.get(external).data
+            detail_response = self.client.get(external)
+            self.assertEqual(detail_response.status_code, 200, detail_response.data)
+            detail = detail_response.data
             self.assertEqual(set(detail), {
                 'id', 'code', 'pc', 'reference_date', 'delivery_date', 'deadline',
                 'open', 'items', 'participating', 'own_offer',
             })
             self.assertNotIn('notes', detail['items'][0])
             self.assertIsNone(detail['own_offer'])
+            # Token de convite não é credencial JWT dos endpoints internos.
+            self.assertEqual(self.client.get(internal).status_code, 401)
+            self.assertEqual(self.client.get(base + 'supplier-registry/').status_code, 401)
             self.assertEqual(self.client.post(external + 'participate/').status_code, 200)
             item_id = detail['items'][0]['id']
-            bid = {'offers': [{'item_id': item_id, 'unit_price': str(10 + i), 'selected': True}]}
+            bid = {'offers': [{'item_id': item_id, 'unit_price': str(10 + i)}]}
             response = self.client.put(external + 'bid/', bid, format='json')
             self.assertEqual(response.status_code, 200, response.data)
             self.assertEqual(response.data['own_offer']['offers'][0]['unit_price'], f'{10 + i}.000000')
             self.assertFalse(response.data['own_offer']['offers'][0]['selected'])
+            self.assertEqual(response.data['own_offer']['quoted_on'], timezone.localdate().isoformat())
+            own = self.client.get(external).data['own_offer']
+            self.assertEqual(own['offers'][0]['unit_price'], f'{10 + i}.000000')
 
+        # Fechamento e sincronização: nenhum fornecedor acessa preços alheios.
+        self.client.credentials()
         self.client.force_authenticate(self.director)
-        self.assertEqual(self.client.get(internal).data['quotes'], [])
-        response = self.client.post(internal + 'close-tender/', {'version': 3}, format='json')
-        self.assertEqual(response.status_code, 200, response.data)
-        self.assertEqual(len(response.data['quotes']), 2)
-        self.client.force_authenticate(profiles[0])
-        detail = self.client.get(external).data
-        self.assertFalse(detail['open'])
-        self.assertEqual(detail['own_offer']['offers'][0]['unit_price'], '10.000000')
-        self.assertEqual(self.client.put(external + 'bid/', bid, format='json').status_code, 409)
-
+        quotation.refresh_from_db()
+        QuotationMap.objects.filter(pk=quotation.pk).update(tender_deadline=timezone.now() - timedelta(seconds=1))
+        self.assertEqual(close_expired_tenders([quotation.pk]), 1)
+        quotation.refresh_from_db()
+        self.assertIsNotNone(quotation.tender_closed_at)
+        submitted = {
+            quote['supplier']['id']: quote['offers'][0]['unit_price']
+            for quote in quotation.quotes if quote['offers']
+        }
+        self.assertEqual(submitted[suppliers[0][1].pk], '10.000000')
+        self.assertEqual(submitted[suppliers[1][1].pk], '11.000000')
+        for token in credentials:
+            self.client.force_authenticate(None)
+            self.client.credentials(HTTP_AUTHORIZATION=f'Invitation {token}')
+            self.assertIn(self.client.get(external).status_code, (401, 403))
+        self.client.credentials()
         self.client.force_authenticate(self.owner)
         second = self.post(self.ready(), 'submit')
         self.client.force_authenticate(self.director)
         self.post(second, 'approve')
-        self.assertEqual(QuotationMap.objects.get(approved_revision_id=second['id']).code, 'MC26001-01')
+        self.assertEqual(
+            QuotationMap.objects.get(approved_revision_id=second['id']).code,
+            'MC26001-002',
+        )
 
     def test_only_technical_responsible_with_permission_and_not_creator_can_approve(self):
         from material_requisitions.services.requisitions import can_decide_rm

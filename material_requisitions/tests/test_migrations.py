@@ -9,6 +9,8 @@ from django.utils import timezone
 
 OLD = ('budgeting', '0024_materialrequisition_materialrequisitionrevision_and_more')
 NEW = ('material_requisitions', '0002_move_content_types')
+# Em 0024, o modelo Proposal ainda não possuía commercial_details.
+COMMERCIAL_OLD = ('commercial', '0009_add_proposal_issuer_name')
 NAMES = ('MaterialRequisition', 'MaterialRequisitionRevision', 'MaterialRequisitionSection',
          'MaterialRequisitionItem', 'MaterialRequisitionEvent', 'LegacyMaterialRequest',
          'LegacyMaterialRequestItem', 'LegacyMaterialRequestIssue')
@@ -17,8 +19,8 @@ NAMES = ('MaterialRequisition', 'MaterialRequisitionRevision', 'MaterialRequisit
 class MoveRMTests(TransactionTestCase):
     def test_existing_rows_ids_relations_content_types_and_reverse(self):
         executor = MigrationExecutor(connection)
-        executor.migrate([OLD, ('material_requisitions', None)])
-        state = executor.loader.project_state([OLD])
+        executor.migrate([OLD, ('material_requisitions', None), COMMERCIAL_OLD])
+        state = executor.loader.project_state([OLD, COMMERCIAL_OLD])
         apps = state.apps
         old = {name: apps.get_model('budgeting', name) for name in NAMES}
         User = apps.get_model('accounts', 'User')
