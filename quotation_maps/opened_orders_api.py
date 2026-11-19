@@ -51,7 +51,7 @@ def _hub_rows():
             'cod': order.code.removeprefix('OC'),
             'code': order.code,
             'dt_solicitation': order.created_at.astimezone(dt_timezone.utc).strftime('%d/%m/%Y'),
-            'dt_delivery': '',
+            'dt_delivery': order.promised_delivery_at.strftime('%d/%m/%Y') if order.promised_delivery_at else '',
             'buy_order_value': str(order.total),
             'supplier': name,
             'description': f'Mapa de Cotação {order.quotation_map.code}',

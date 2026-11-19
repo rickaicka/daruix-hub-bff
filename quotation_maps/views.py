@@ -299,6 +299,8 @@ class MapView(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Generic
                    if code and code.startswith(prefix) and len(code) == len(prefix) + 3
                    and code[len(prefix):].isdigit()]
         sequence = max([sequence, *numbers])
+        from .delivery_deadlines import parse_delivery_terms, expected_delivery_date
+        creation_date = timezone.localdate()
         orders = []
         for data in order_data(quotation):
             sequence += 1
@@ -306,8 +308,15 @@ class MapView(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Generic
                 code = make_order_code(proposal.code, sequence)
             except ValueError as exc:
                 raise Conflict(str(exc)) from exc
+            delivery = parse_delivery_terms(data["terms"].get("delivery"))
+            promised_date = None
+            if delivery is not None:
+                days, day_type = delivery
+                promised_date = expected_delivery_date(creation_date, days, day_type)
+                # Prazo estruturado preservado na OC, mesmo que o campo legível mude.
+                data["terms"].update(delivery_days=days, delivery_day_type=day_type)
             orders.append(PurchaseOrder(
-                quotation_map=quotation, code=code, **data
+                quotation_map=quotation, code=code, promised_delivery_at=promised_date, **data
             ))
         PurchaseOrder.objects.bulk_create(orders)
         return self._save(quotation, Status.ORDERED)

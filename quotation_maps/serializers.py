@@ -38,7 +38,7 @@ class MapSummary(serializers.ModelSerializer):
 class OrderRead(serializers.ModelSerializer):
     class Meta:
         model = PurchaseOrder
-        fields = ("id", "code", "supplier_snapshot", "lines", "terms", "total", "created_at")
+        fields = ("id", "code", "supplier_snapshot", "lines", "terms", "total", "created_at", "promised_delivery_at")
 
 
 class MapRead(MapSummary):
