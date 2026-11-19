@@ -41,10 +41,13 @@ def merge_supplier_bid(quotation, bid):
             previous["price_source"] = "ADJUSTED"
         # Do not overwrite selected, buyer notes or items not included in this bid.
     # Commercial terms follow the supplier unless the buyer edited them separately.
-    for field in ("payment", "delivery", "quoted_on", "freight", "discount", "notes"):
+    for field in ("payment", "delivery", "freight", "discount", "notes"):
         key = "manual_terms_" + field
         if not existing.get(key, False) and field in incoming:
             existing[field] = incoming[field]
+    # A data é controlada pelo envio do fornecedor, não pelo comparativo manual.
+    if incoming.get("quoted_on"):
+        existing["quoted_on"] = incoming["quoted_on"]
     quotation.quotes = quotes
     return True
 
@@ -83,10 +86,18 @@ def merge_buyer_quotes(quotation, incoming_quotes):
             else:
                 offer["manual_override"] = False
                 offer["price_source"] = "MANUAL"
-        for field in ("payment", "delivery", "quoted_on", "freight", "discount", "notes"):
+        for field in ("payment", "delivery", "freight", "discount", "notes"):
             key = "manual_terms_" + field
             quote[key] = bool(previous.get(key, False)) or (
                 field in previous and str(quote.get(field)) != str(previous.get(field))
             )
+        # O comparativo não pode alterar/apagar a data registrada pelo fornecedor.
+        # Inclusive se a tela omitir a propriedade, mantém a data persistida.
+        quote["quoted_on"] = (
+            bids[supplier_id].offer.get("quoted_on")
+            if supplier_id in bids and bids[supplier_id].offer and bids[supplier_id].offer.get("quoted_on")
+            else previous.get("quoted_on")
+        )
+        quote.pop("manual_terms_quoted_on", None)
         result.append(quote)
     return result

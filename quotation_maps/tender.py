@@ -102,8 +102,9 @@ class TenderView(viewsets.GenericViewSet):
         serializer = TenderBidWrite(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data, supplier_id=supplier.pk)
-        if data.get("quoted_on") is None:
-            data["quoted_on"] = timezone.localdate()
+        # A data da proposta é definida sempre no servidor quando o fornecedor envia.
+        # Ignora qualquer data recebida do navegador, inclusive em atualizações.
+        data["quoted_on"] = timezone.localdate()
         data["offers"] = [dict(offer, available_quantity=None, brand="", selected=False)
                           for offer in data["offers"] if offer["unit_price"] is not None]
         if not data["offers"]:
